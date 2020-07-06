@@ -113,13 +113,6 @@ const HomepageLayout = () => (
             />
           </Grid.Column>
         </Grid.Row>
-        <Grid.Row>
-          <Grid.Column textAlign="center">
-            <Button size="huge" as={Link} to="/login">
-              Login
-            </Button>
-          </Grid.Column>
-        </Grid.Row>
       </Grid>
     </Segment>
   </ResponsiveContainer>
