@@ -1,6 +1,6 @@
 import React from "react";
-import { Container, Menu } from "semantic-ui-react";
-import { Link, withRouter } from "react-router-dom";
+import { Menu } from "semantic-ui-react";
+import { NavLink, withRouter } from "react-router-dom";
 import { connect } from "react-redux";
 import { logout } from "../store/actions/auth";
 
@@ -8,31 +8,48 @@ class CustomLayout extends React.Component {
   render() {
     const { authenticated } = this.props;
     return (
-      <div>
-        <Menu fixed="top" inverted>
-          <Container>
-            <Link to="/">
-              <Menu.Item header>Home</Menu.Item>
-            </Link>
+      <React.Fragment>
+        <Menu fixed="top" className="navbar">
+          <Menu.Item
+            as={NavLink}
+            exact
+            to="/"
+            name="Home"
+            className="nav-brand"
+          >
+            <img
+              src="https://www.gstatic.com/images/branding/product/1x/drive_48dp.png"
+              alt="logo"
+            ></img>
+            <span>Drive</span>
+          </Menu.Item>
+          <div className="end-nav">
             {authenticated ? (
-              <Menu.Item header onClick={() => this.props.logout()}>
-                Logout
-              </Menu.Item>
+              <React.Fragment>
+                <Menu.Item
+                  as={NavLink}
+                  exact
+                  to="/explorer"
+                  name="Explorer"
+                ></Menu.Item>
+                <Menu.Item header onClick={() => this.props.logout()}>
+                  Logout
+                </Menu.Item>
+              </React.Fragment>
             ) : (
               <React.Fragment>
-                <Link to="/login">
-                  <Menu.Item header>Login</Menu.Item>
-                </Link>
-                <Link to="/signup">
-                  <Menu.Item header>Signup</Menu.Item>
-                </Link>
+                <Menu.Item header as={NavLink} exact to="/login">
+                  Login
+                </Menu.Item>
+                <Menu.Item header as={NavLink} exact to="/signup">
+                  Signup
+                </Menu.Item>
               </React.Fragment>
             )}
-          </Container>
+          </div>
         </Menu>
-
         {this.props.children}
-      </div>
+      </React.Fragment>
     );
   }
 }

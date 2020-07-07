@@ -1,0 +1,184 @@
+#root {
+  height: 100%;
+  .navbar {
+    box-shadow: none;
+    padding: 8px;
+    .nav-brand {
+      min-width: 238px;
+      padding-right: 30px;
+      height: 48px;
+      cursor: pointer;
+      &::before {
+        display: none;
+      }
+      &:hover,
+      &:active {
+        background: transparent !important;
+      }
+      img {
+        width: 40px;
+        height: 40px;
+      }
+      span {
+        padding-left: 4px;
+        color: #5f6368;
+        font-size: 22px;
+        line-height: 24px;
+        vertical-align: middle;
+      }
+    }
+    .end-nav {
+      margin-left: auto;
+      display: flex;
+    }
+    .item {
+      &.active {
+        background: transparent;
+        &:hover,
+        &:active {
+          background: transparent;
+        }
+      }
+    }
+  }
+  .explorer-page {
+    display: flex;
+    padding-top: 64px;
+    height: 100%;
+    .sidebar {
+      position: relative;
+      max-width: 394px;
+      min-width: 256px;
+      box-shadow: none;
+      .item {
+        text-align: left;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        svg {
+          overflow: visible;
+          vertical-align: top;
+          height: 24px;
+          width: 24px;
+          margin-right: 25px;
+        }
+        span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: inline-block;
+          flex: 1 1 auto;
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+      }
+    }
+    .context-area {
+      width: 100%;
+      .react-contextmenu-wrapper {
+        width: 100%;
+        height: 100%;
+      }
+      .react-contextmenu {
+        box-shadow: 0px 5px 3px rgba(0, 0, 0, 0.15) !important;
+        .react-contextmenu-item {
+          cursor: pointer;
+          padding: 10px 15px;
+          &.react-contextmenu-item--divider {
+            background: #e3e2e2;
+            padding: 0;
+            height: 1px;
+          }
+        }
+      }
+    }
+  }
+}
+
+.file-upload-modal-overlay {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+}
+.file-upload-modal {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  left: auto;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  max-height: 323px;
+  z-index: 101;
+  transition: opacity 0.2s;
+  .modal-header {
+    display: flex;
+    background-color: #323232;
+    border-radius: 3px 3px 0 0;
+    align-items: center;
+    border: 1px transparent solid;
+    color: #fff;
+    font-size: 14px;
+    height: 52px;
+    width: 362px;
+    line-height: normal;
+    .loading-status {
+      flex: 0 1 auto;
+      cursor: default;
+      display: inline-block;
+      font-weight: inherit;
+      overflow: hidden;
+      padding: 0 24px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 362px;
+    }
+    .btn-group {
+      display: flex;
+      flex: 0 0 auto;
+      .tooltip {
+        border: 1px solid transparent;
+        cursor: pointer;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin: 0 8px;
+        outline: none;
+        transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+          background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+          box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 50%;
+        min-width: 0;
+        overflow: visible;
+        height: 40px;
+        width: 40px;
+        padding: 0;
+        position: relative;
+        vertical-align: top;
+        background: transparent;
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.12);
+        }
+        .svg {
+          left: 50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          line-height: 0;
+          margin: 0;
+          max-height: none;
+        }
+      }
+      .popup-content {
+        background-color: rgba(0, 0, 0, 0.52) !important;
+        color: #fff !important;
+        font-size: 10px;
+        width: 60px !important;
+        height: 25px !important;
+        text-align: center;
+        border: none !important;
+        border-radius: 2px;
+      }
+    }
+  }
+}
