@@ -1,0 +1,489 @@
+#root {
+  height: 100%;
+  .navbar {
+    box-shadow: none;
+    padding: 8px;
+    z-index: 1074;
+    .nav-brand {
+      min-width: 238px;
+      padding-right: 30px;
+      height: 48px;
+      cursor: pointer;
+      &::before {
+        display: none;
+      }
+      &:hover,
+      &:active {
+        background: transparent !important;
+      }
+      img {
+        width: 40px;
+        height: 40px;
+      }
+      span {
+        padding-left: 4px;
+        color: #5f6368;
+        font-size: 22px;
+        line-height: 24px;
+        vertical-align: middle;
+      }
+    }
+    .end-nav {
+      margin-left: auto;
+      display: flex;
+    }
+    .item {
+      &.active {
+        background: transparent;
+        &:hover,
+        &:active {
+          background: transparent;
+        }
+      }
+    }
+  }
+  .explorer-page {
+    display: flex;
+    padding-top: 64px;
+    height: 100%;
+    .sidebar {
+      position: relative;
+      max-width: 394px;
+      min-width: 256px;
+      box-shadow: none;
+      .item {
+        text-align: left;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        flex-direction: row;
+        svg {
+          overflow: visible;
+          vertical-align: top;
+          height: 24px;
+          width: 24px;
+          margin-right: 25px;
+        }
+        span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          display: inline-block;
+          flex: 1 1 auto;
+          vertical-align: middle;
+          white-space: nowrap;
+        }
+      }
+    }
+    .context-area {
+      width: 100%;
+      height: 100%;
+      overflow-y: scroll;
+      padding: 10px;
+      .react-contextmenu-wrapper {
+        width: 100%;
+        height: 100%;
+      }
+      .react-contextmenu {
+        box-shadow: 0px 5px 3px rgba(0, 0, 0, 0.15);
+        background: #fff;
+        z-index: 1071;
+        .react-contextmenu-item {
+          cursor: pointer;
+          padding: 10px 15px;
+          &.react-contextmenu-item--divider {
+            background: #e3e2e2;
+            padding: 0;
+            height: 1px;
+          }
+        }
+      }
+    }
+  }
+  .file-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid #dadce0;
+    border-radius: 6px;
+    transition: box-shadow 200ms cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    height: auto;
+    position: relative;
+    margin: 10px;
+    .image-view {
+      width: 100%;
+      background: #f4f4f4;
+      background-position: 0 0, 10px 10px;
+      background-size: 21px 21px;
+      flex: 1 1 auto;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      img {
+        width: 100%;
+        height: 100%;
+        &.icon {
+          height: 64px;
+          width: 64px;
+          align-self: center;
+        }
+      }
+    }
+    .detail-view {
+      display: flex;
+      flex: 0 0 48px;
+      width: 100%;
+      .icon-box {
+        width: 40px;
+        height: 48px;
+        display: flex;
+        justify-content: center;
+        img {
+          height: 16px;
+          width: 16px;
+          align-self: center;
+        }
+      }
+      .text-box {
+        width: calc(100% - 56px);
+        align-items: center;
+        display: flex;
+        .tooltip {
+          background: transparent;
+          border: none;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          font-weight: 500;
+          overflow: hidden;
+          text-align: left;
+          padding: 0;
+          opacity: 1;
+          color: rgba(0, 0, 0, 0.72);
+          line-height: 20px;
+          font-size: 13px;
+          position: relative;
+        }
+        .popup-content {
+          background-color: rgba(0, 0, 0, 0.52) !important;
+          color: #fff !important;
+          font-size: 10px;
+          width: 150px !important;
+          height: 25px !important;
+          text-align: center;
+          border: none !important;
+          border-radius: 2px;
+        }
+      }
+    }
+  }
+  @media (min-width: 320px) {
+    .navbar {
+      .nav-brand {
+        min-width: 138px;
+      }
+    }
+    .explorer-page {
+      .sidebar {
+        display: none;
+      }
+      .context-area {
+        .file-view {
+          width: 43%;
+          .image-view {
+            height: 105px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 360px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 44%;
+        }
+      }
+    }
+  }
+  @media (min-width: 414px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          .image-view {
+            height: 118px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 600px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 46%;
+          .image-view {
+            height: 165px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 768px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 47%;
+          .image-view {
+            height: 205px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 1024px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 31%;
+          .image-view {
+            height: 195px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 1280px) {
+    .navbar .nav-brand {
+      min-width: 238px;
+    }
+    .explorer-page {
+      .sidebar {
+        display: block;
+      }
+    }
+  }
+  @media (min-width: 1366px) {
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 23%;
+          .image-view {
+            height: 175px;
+          }
+        }
+      }
+    }
+  }
+  @media (min-width: 1920px) {
+    .container {
+      max-width: 1644px;
+    }
+    .explorer-page {
+      .context-area {
+        .file-view {
+          width: 15%;
+        }
+      }
+    }
+  }
+}
+
+.file-upload-modal-overlay {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+}
+.file-upload-modal {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  left: auto;
+  box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2);
+  border-radius: 2px;
+  max-height: 600px;
+  z-index: 1073;
+  transition: opacity 0.2s;
+  background: #fff;
+  &:focus {
+    outline: none;
+  }
+  .modal-header {
+    display: flex;
+    background-color: #323232;
+    border-radius: 3px 3px 0 0;
+    align-items: center;
+    border: 1px transparent solid;
+    color: #fff;
+    font-size: 14px;
+    height: 52px;
+    width: 300px;
+    line-height: normal;
+    .loading-status {
+      flex: 0 1 auto;
+      cursor: default;
+      display: inline-block;
+      font-weight: inherit;
+      overflow: hidden;
+      padding-right: 24px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 362px;
+    }
+    .btn-group {
+      display: flex;
+      flex: 0 0 auto;
+      .tooltip {
+        border: 1px solid transparent;
+        cursor: pointer;
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: center;
+        margin: 0 8px;
+        outline: none;
+        transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+          background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+          box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+        border-radius: 50%;
+        min-width: 0;
+        overflow: visible;
+        height: 40px;
+        width: 40px;
+        padding: 0;
+        position: relative;
+        vertical-align: top;
+        background: transparent;
+        opacity: 1;
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.12);
+        }
+        .svg {
+          left: 50%;
+          position: absolute;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          line-height: 0;
+          margin: 0;
+          max-height: none;
+          &:before,
+          &:after {
+            box-sizing: initial;
+          }
+        }
+      }
+      .popup-content {
+        background-color: rgba(0, 0, 0, 0.52) !important;
+        color: #fff !important;
+        font-size: 10px;
+        width: 60px !important;
+        height: 25px !important;
+        text-align: center;
+        border: none !important;
+        border-radius: 2px;
+      }
+    }
+  }
+  .modal-body {
+    width: 300px;
+    max-height: 500px;
+    &.extra {
+      overflow-y: scroll;
+    }
+    .item {
+      display: block;
+      border-bottom: solid 1px #eee;
+      color: #222;
+      padding-bottom: 6px;
+      position: relative;
+      cursor: pointer;
+      .content {
+        display: flex;
+        min-height: 30px;
+        padding: 0 10px;
+        .logo {
+          display: inline-block;
+          left: 0;
+          line-height: normal;
+          margin: 0 10px 0 10px;
+          position: absolute;
+          padding-top: 15px;
+          &.loading {
+            opacity: 0.5;
+          }
+          img {
+            width: 16px;
+            height: 16px;
+          }
+        }
+        .name {
+          display: flex;
+          flex: 1 1 auto;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-top: 12px;
+          max-width: 250px;
+          &.loading {
+            opacity: 0.5;
+          }
+          span {
+            &:first-child {
+              flex: 0 1 auto;
+              height: 25px;
+              margin-top: 1px;
+              min-width: 25px;
+              padding-left: 30px;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+            }
+            &:last-child {
+              flex: 1 0 auto;
+              color: #757575;
+              margin-top: 1px;
+            }
+          }
+        }
+        .status {
+          padding: 10px 0px 0px 5px;
+          .loading {
+            width: 24px !important;
+            height: 24px !important;
+          }
+          .icon {
+            border: 1px solid transparent;
+            box-sizing: border-box;
+            cursor: pointer;
+            display: inline-block;
+            outline: none;
+            transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 50%;
+            min-width: 0;
+            overflow: hidden;
+            text-align: initial;
+            height: 24px;
+            width: 24px;
+            padding: 0;
+            position: relative;
+            vertical-align: top;
+            .btn {
+              position: absolute;
+              visibility: hidden;
+              left: 50%;
+              line-height: 0;
+              top: 50%;
+              transform: translate(-50%, -50%);
+              outline: none;
+              svg {
+                overflow: visible;
+                vertical-align: top;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -35,7 +35,7 @@ npm-debug.log
 # General
 /theprojectname-venv/
 /venv/
-/env/
+/venv/
 /output/
 /cache/
 boilerplate.zip
