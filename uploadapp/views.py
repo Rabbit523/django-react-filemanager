@@ -91,7 +91,8 @@ class FileUploadView(APIView):
                     path=url,
                     content_type=file.content_type,
                     user=User.objects.first(),
-                    name=file.name
+                    name=file.name,
+                    size=file.size
                 )
                 arr.append(model_to_dict(file_instance))
             else:

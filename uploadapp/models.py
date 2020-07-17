@@ -28,6 +28,7 @@ class File(models.Model):
     content_type = models.CharField(max_length=255, default='')
     name = models.CharField(max_length=255, default='')
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    size = models.CharField(max_length=255, default='')
 
     def __str__(self):
         return self.file.name
