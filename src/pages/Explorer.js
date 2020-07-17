@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { ContextMenu, MenuItem, ContextMenuTrigger } from "react-contextmenu";
-import { Sidebar, Icon, Menu } from "semantic-ui-react";
+import { Sidebar, Icon, Menu, Dropdown } from "semantic-ui-react";
 import { isMobileOnly } from "react-device-detect";
 import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
@@ -9,27 +9,56 @@ import Modal from "react-modal";
 import Popup from "reactjs-popup";
 import { useEventListener } from "../helpers/CustomHook";
 import { getFiles, uploadFiles } from "../helpers/RestAPI";
+import { imageGroup128 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
-import { FileView } from "../containers/Fileview";
+import {
+  availableUploadArea,
+  availableDownloadArea,
+} from "../helpers/AvailableArea";
+import { FileView, ListView } from "../containers/Fileview";
 import Layout from "../containers/Layout";
 
 export const Explorer = () => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
-  const available_area = ["row", "react-contextmenu-wrapper", "context-area"];
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_minimized, setMinimize] = useState(false);
   const [is_uploaded, setUploaded] = useState(false);
   const [is_context, setContext] = useState(true);
+  const [is_triggerable, setContextTrigger] = useState(false);
+  const [is_gridType, setViewType] = useState(true);
+  const [order_desc, setOrder] = useState(true);
   const [file_count, setFileCount] = useState(0);
   const [total_file_count, setTotalFileCount] = useState(0);
   const [uploading_files, setUploadingFiles] = useState([]);
   const [files, setFiles] = useState([]);
+  const [quick_files, setQuickFiles] = useState([
+    {
+      path: imageGroup128.getting_started,
+      content_type: "image get_started",
+      name: "Getting started",
+      size: "1MB",
+      id: 0,
+    },
+  ]);
   const [selected_file, setSelectedFile] = useState({});
 
   useEffect(() => {
     getFiles().then((res) => {
-      setFiles(res);
+      if (res.length > 0) {
+        const quick_default_file = quick_files[0];
+        const quick_arr = [];
+        res.map((item, i) => {
+          if (i > res.length - 5) {
+            quick_arr.push(item);
+          }
+        });
+        setQuickFiles(quick_arr);
+        const file_arr = [quick_default_file].concat(res);
+        setFiles(file_arr);
+      } else {
+        setFiles(res);
+      }
     });
   }, [is_uploaded]);
 
@@ -37,23 +66,35 @@ export const Explorer = () => {
     setTotalFileCount(total_file_count + file_count);
   }, [file_count]);
 
-  const eventHandler = useCallback(
+  const eventContextHandler = useCallback(
     (e) => {
       if (e.button === 2 && !isMobileOnly) {
-        if (available_area.includes(e.target.className)) {
+        if (availableUploadArea.includes(e.target.className)) {
+          setContextTrigger(false);
           setContext(true);
-        } else {
+        } else if (availableDownloadArea.includes(e.target.className)) {
+          setContextTrigger(false);
           setContext(false);
-          const cur = e.target.className.split(" ")[1];
+          const cur = e.target.id.split(" ")[1];
           const file = files.find((file) => file.id === parseInt(cur));
           setSelectedFile(file);
+        } else {
+          setContextTrigger(true);
         }
+      } else {
+        setContextTrigger(true);
       }
     },
     [is_context, files]
   );
 
-  useEventListener("mousedown", eventHandler);
+  const handleDropdown = (type) => {
+    if (type === "upload_file") {
+      fileRef.current.click();
+    } else {
+      console.log(type);
+    }
+  };
 
   const handleClick = (e, data) => {
     if (data.foo === "upload_file") {
@@ -102,6 +143,30 @@ export const Explorer = () => {
   const minimizeModal = () => {
     setMinimize(!is_minimized);
   };
+
+  const handleChangeLayout = () => {
+    setViewType(!is_gridType);
+  };
+
+  const handleShowDetail = () => {
+    console.log("Show Detail View");
+  };
+
+  const handleSortOrder = useCallback(
+    (e) => {
+      setOrder(!order_desc);
+      let ordered_files = [];
+      if (order_desc) {
+        ordered_files = files.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        ordered_files = files.sort((a, b) => b.name.localeCompare(a.name));
+      }
+      setFiles(ordered_files);
+    },
+    [order_desc, files]
+  );
+
+  useEventListener("mousedown", eventContextHandler);
 
   return (
     <Layout>
@@ -251,41 +316,295 @@ export const Explorer = () => {
             </div>
           )}
         </Modal>
-        <Sidebar as={Menu} vertical visible={true}>
-          <Menu.Item as={Link} to="/explorer">
-            <svg
-              width="24px"
-              height="24px"
-              viewBox="0 0 24 24"
-              fill="#000000"
-              focusable="false"
-            >
-              <path d="M19 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H5v-1h14v1zm0-3H5V4h14v13zm-9.35-2h5.83l1.39-2.77h-5.81zm7.22-3.47L13.65 6h-2.9L14 11.53zm-5.26-2.04l-1.45-2.52-3.03 5.51L8.6 15z"></path>
-            </svg>
-            <span>My Drive</span>
-          </Menu.Item>
-        </Sidebar>
-        <div className="context-area">
-          <ContextMenuTrigger id="context-menu">
-            {files.length > 0 ? (
-              <div className="container">
-                <div className="row">
-                  {files.map((item, i) => (
-                    <FileView
-                      key={i}
-                      path={item.path}
-                      type={item.content_type}
-                      name={item.name}
-                      id={item.id}
-                    />
-                  ))}
-                </div>
+        <ContextMenuTrigger id="context-menu" disable={is_triggerable}>
+          <Sidebar as={Menu} vertical visible={true}>
+            <Dropdown text="New" icon={null} labeled className="button-tool">
+              <Dropdown.Menu>
+                <Dropdown.Item
+                  icon="folder outline"
+                  label="New folder"
+                  onClick={(e) => handleDropdown("new_folder")}
+                ></Dropdown.Item>
+                <Dropdown.Divider divider />
+                <Dropdown.Item
+                  icon="upload"
+                  label="Upload files"
+                  onClick={(e) => handleDropdown("upload_file")}
+                ></Dropdown.Item>
+                <Dropdown.Item
+                  icon="folder outline"
+                  label="Upload folder"
+                  onClick={(e) => handleDropdown("upload_folder")}
+                ></Dropdown.Item>
+                <Dropdown.Divider divider />
+                <Dropdown.Item
+                  icon="google"
+                  label="Google Docs"
+                  onClick={(e) => handleDropdown("google_docs")}
+                ></Dropdown.Item>
+              </Dropdown.Menu>
+            </Dropdown>
+            <Menu.Item as={Link} to="/explorer">
+              <svg
+                width="24px"
+                height="24px"
+                viewBox="0 0 24 24"
+                fill="#000000"
+                focusable="false"
+              >
+                <path d="M19 2H5c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 18H5v-1h14v1zm0-3H5V4h14v13zm-9.35-2h5.83l1.39-2.77h-5.81zm7.22-3.47L13.65 6h-2.9L14 11.53zm-5.26-2.04l-1.45-2.52-3.03 5.51L8.6 15z"></path>
+              </svg>
+              <span>My Drive</span>
+            </Menu.Item>
+          </Sidebar>
+          <div className="page-container">
+            <div className="page-navbar">
+              <div className="navbar-dropdown-menu">
+                <Dropdown text="My Drive" labeled className="navbar-dropdown">
+                  <Dropdown.Menu>
+                    <Dropdown.Item
+                      icon="folder outline"
+                      label="New folder"
+                      onClick={(e) => handleDropdown("new_folder")}
+                    ></Dropdown.Item>
+                    <Dropdown.Divider divider />
+                    <Dropdown.Item
+                      icon="upload"
+                      label="Upload files"
+                      onClick={(e) => handleDropdown("upload_file")}
+                    ></Dropdown.Item>
+                    <Dropdown.Item
+                      icon="folder outline"
+                      label="Upload folder"
+                      onClick={(e) => handleDropdown("upload_folder")}
+                    ></Dropdown.Item>
+                    <Dropdown.Divider divider />
+                    <Dropdown.Item
+                      icon="google"
+                      label="Google Docs"
+                      onClick={(e) => handleDropdown("google_docs")}
+                    ></Dropdown.Item>
+                  </Dropdown.Menu>
+                </Dropdown>
               </div>
-            ) : (
-              <div></div>
-            )}
-          </ContextMenuTrigger>
-
+              <div className="navbar-tools">
+                <button className="btn-layout" onClick={handleChangeLayout}>
+                  {is_gridType ? (
+                    <svg
+                      width="24px"
+                      height="24px"
+                      viewBox="0 0 24 24"
+                      focusable="false"
+                      fill="#000000"
+                    >
+                      <path d="M3,5v14h18V5H3z M7,7v2H5V7H7z M5,13v-2h2v2H5z M5,15h2v2H5V15z M19,17H9v-2h10V17z M19,13H9v-2h10V13z M19,9H9V7h10V9z"></path>
+                    </svg>
+                  ) : (
+                    <svg
+                      width="24px"
+                      height="24px"
+                      viewBox="0 0 24 24"
+                      fill="#000000"
+                    >
+                      <path d="M2,5v14h20V5H2z M14,7v4h-4V7H14z M4,7h4v4H4V7z M16,11V7h4v4H16z M4,17v-4h4v4H4z M10,17v-4h4v4H10z M20,17 h-4v-4h4V17z"></path>
+                      <path d="M0 0h24v24H0z" fill="none"></path>
+                    </svg>
+                  )}
+                </button>
+                <button className="btn-layout" onClick={handleShowDetail}>
+                  <svg
+                    width="24px"
+                    height="24px"
+                    viewBox="0 0 24 24"
+                    fill="#000000"
+                  >
+                    <path d="M0 0h24v24H0z" fill="none"></path>
+                    <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zM11 9h2V7h-2v2z"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="context-area">
+              {files.length > 0 ? (
+                <div className="layout-view">
+                  <div className="layout-content">
+                    <div className="layout-header">
+                      <h2>Quick Access</h2>
+                    </div>
+                    <div className="main-content">
+                      <div className="container">
+                        <div className="row">
+                          {quick_files.map((item, i) => (
+                            <FileView
+                              key={i}
+                              path={item.path}
+                              type={item.content_type}
+                              name={item.name}
+                              id={item.id}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="layout-content">
+                    <div className="layout-header">
+                      {is_gridType && <h2>Files</h2>}
+                      {!is_gridType && (
+                        <div className="list-tool">
+                          <div className="td-name">
+                            <span>Name</span>
+                            <button class="direction" onClick={handleSortOrder}>
+                              {order_desc ? (
+                                <svg
+                                  width="18px"
+                                  height="18px"
+                                  viewBox="0 0 48 48"
+                                  focusable="false"
+                                  fill="#000000"
+                                >
+                                  <path fill="none" d="M0 0h48v48H0V0z"></path>
+                                  <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
+                                </svg>
+                              ) : (
+                                <svg
+                                  width="18px"
+                                  height="18px"
+                                  viewBox="0 0 48 48"
+                                  focusable="false"
+                                  fill="#000000"
+                                >
+                                  <path fill="none" d="M0 0h48v48H0V0z"></path>
+                                  <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <div className="td-owner">
+                            <span>Owner</span>
+                          </div>
+                          <div className="td-modified">
+                            <span>Last modified</span>
+                          </div>
+                          <div className="td-size">
+                            <span>File size</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="main-content">
+                      <div className="container">
+                        <div className="row">
+                          {is_gridType &&
+                            files.map((item, i) => (
+                              <FileView
+                                key={i}
+                                path={item.path}
+                                type={item.content_type}
+                                name={item.name}
+                                id={item.id}
+                              />
+                            ))}
+                          {!is_gridType && (
+                            <div className="list-group">
+                              {files.map((item, i) => (
+                                <ListView
+                                  key={i}
+                                  owner=""
+                                  last_modified=""
+                                  type={item.content_type}
+                                  name={item.name}
+                                  size={item.size}
+                                  id={item.id}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="layout-view">
+                  <div className="layout-content">
+                    <div className="layout-header">
+                      {is_gridType && <h2>Quick Access</h2>}
+                      {!is_gridType && (
+                        <div className="list-tool">
+                          <div className="td-name">
+                            <span>Name</span>
+                            <button class="direction" onClick={handleSortOrder}>
+                              {order_desc ? (
+                                <svg
+                                  width="18px"
+                                  height="18px"
+                                  viewBox="0 0 48 48"
+                                  focusable="false"
+                                  fill="#000000"
+                                >
+                                  <path fill="none" d="M0 0h48v48H0V0z"></path>
+                                  <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
+                                </svg>
+                              ) : (
+                                <svg
+                                  width="18px"
+                                  height="18px"
+                                  viewBox="0 0 48 48"
+                                  focusable="false"
+                                  fill="#000000"
+                                >
+                                  <path fill="none" d="M0 0h48v48H0V0z"></path>
+                                  <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
+                                </svg>
+                              )}
+                            </button>
+                          </div>
+                          <div className="td-owner">
+                            <span>Owner</span>
+                          </div>
+                          <div className="td-modified">
+                            <span>Last modified</span>
+                          </div>
+                          <div className="td-size">
+                            <span>File size</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    <div className="main-content">
+                      <div className="container">
+                        <div className="row">
+                          {is_gridType &&
+                            quick_files.map((item, i) => (
+                              <FileView
+                                key={i}
+                                path={item.path}
+                                type={item.content_type}
+                                name={item.name}
+                                id={item.id}
+                              />
+                            ))}
+                          {!is_gridType &&
+                            quick_files.map((item, i) => (
+                              <ListView
+                                key={i}
+                                owner=""
+                                last_modified=""
+                                type={item.content_type}
+                                name={item.name}
+                                size={item.size}
+                                id={item.id}
+                              />
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
           <ContextMenu id="context-menu">
             {is_context ? (
               <React.Fragment>
@@ -319,7 +638,7 @@ export const Explorer = () => {
               </React.Fragment>
             )}
           </ContextMenu>
-        </div>
+        </ContextMenuTrigger>
       </div>
     </Layout>
   );

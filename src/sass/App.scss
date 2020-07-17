@@ -46,42 +46,230 @@
     display: flex;
     padding-top: 64px;
     height: 100%;
-    .sidebar {
-      position: relative;
-      max-width: 394px;
-      min-width: 256px;
-      box-shadow: none;
-      .item {
-        text-align: left;
-        font-size: 13px;
-        display: flex;
-        align-items: center;
-        flex-direction: row;
-        svg {
-          overflow: visible;
-          vertical-align: top;
-          height: 24px;
-          width: 24px;
-          margin-right: 25px;
-        }
-        span {
-          overflow: hidden;
-          text-overflow: ellipsis;
-          display: inline-block;
-          flex: 1 1 auto;
-          vertical-align: middle;
-          white-space: nowrap;
-        }
-      }
-    }
-    .context-area {
+    .react-contextmenu-wrapper {
       width: 100%;
       height: 100%;
-      overflow-y: scroll;
-      padding: 10px;
-      .react-contextmenu-wrapper {
+      display: flex;
+      .sidebar {
+        position: relative;
+        max-width: 394px;
+        min-width: 256px;
+        box-shadow: none;
+        .button-tool {
+          padding: 15px;
+          box-shadow: 0 1px 2px 0 rgba(60, 64, 67, 0.302),
+            0 1px 3px 1px rgba(60, 64, 67, 0.149);
+          align-items: center;
+          background-color: #fff;
+          background-image: none;
+          border: 1px solid transparent;
+          border-radius: 24px;
+          color: #3c4043;
+          display: inline-flex;
+          font-weight: 500;
+          font-size: 14px;
+          letter-spacing: 0.15px;
+          line-height: 22px;
+          text-transform: none;
+          font-family: "Google Sans", Roboto, RobotoDraft, Helvetica, Arial,
+            sans-serif;
+          height: 48px;
+          margin: 15px;
+          min-width: 120px;
+          &:before {
+            border-radius: 50%;
+            border-width: 0;
+            content: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2236%22 height=%2236%22 viewBox=%220 0 36 36%22%3E%3Cpath fill=%22%2334A853%22 d=%22M16 16v14h4V20z%22/%3E%3Cpath fill=%22%234285F4%22 d=%22M30 16H20l-4 4h14z%22/%3E%3Cpath fill=%22%23FBBC05%22 d=%22M6 16v4h10l4-4z%22/%3E%3Cpath fill=%22%23EA4335%22 d=%22M20 16V6h-4v14z%22/%3E%3Cpath fill=%22none%22 d=%22M0 0h36v36H0z%22/%3E%3C/svg%3E");
+            display: block;
+            margin-right: 15px;
+            position: relative;
+            height: 36px;
+            -moz-box-shadow: none;
+            box-shadow: none;
+            opacity: 1;
+          }
+          &:focus {
+            outline: none;
+          }
+          .label {
+            background: transparent;
+            color: #3c4043;
+            font-size: 14px;
+            font-weight: 400;
+          }
+        }
+        .item {
+          text-align: left;
+          font-size: 13px;
+          display: flex;
+          align-items: center;
+          flex-direction: row;
+          svg {
+            overflow: visible;
+            vertical-align: top;
+            height: 24px;
+            width: 24px;
+            margin-right: 25px;
+          }
+          span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            display: inline-block;
+            flex: 1 1 auto;
+            vertical-align: middle;
+            white-space: nowrap;
+          }
+        }
+      }
+      .page-container {
+        display: flex;
+        flex-direction: column;
         width: 100%;
         height: 100%;
+        .page-navbar {
+          display: flex;
+          align-items: center;
+          border-bottom: 1px solid #dadce0;
+          justify-content: space-between;
+          .navbar-dropdown {
+            padding: 15px;
+            align-items: center;
+            color: #3c4043;
+            display: inline-flex;
+            font-weight: 500;
+            font-size: 14px;
+            letter-spacing: 0.15px;
+            line-height: 22px;
+            text-transform: none;
+            font-family: "Google Sans", Roboto, RobotoDraft, Helvetica, Arial,
+              sans-serif;
+            height: 48px;
+            min-width: 120px;
+            &:focus {
+              outline: none;
+            }
+            .text {
+              font-size: 18px;
+              font-weight: 400;
+            }
+            .label {
+              background: transparent;
+              color: #3c4043;
+              font-size: 14px;
+              font-weight: 400;
+            }
+            .menu {
+              .item {
+                padding: 10px 15px !important;
+              }
+            }
+          }
+          .navbar-tools {
+            .btn-layout {
+              border: 1px solid transparent;
+              box-sizing: border-box;
+              cursor: pointer;
+              display: inline-block;
+              margin: 0 8px;
+              outline: none;
+              transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                background 200ms cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 400ms cubic-bezier(0.4, 0, 0.2, 1);
+              border-radius: 50%;
+              min-width: 0;
+              overflow: visible;
+              height: 40px;
+              width: 40px;
+              padding: 0;
+              position: relative;
+              vertical-align: top;
+              background: transparent;
+              &:focus,
+              &:hover {
+                background: #d6d6d6;
+              }
+              svg {
+                opacity: 0.54;
+              }
+            }
+          }
+        }
+        .context-area {
+          width: 100%;
+          height: 100%;
+          overflow-y: scroll;
+          padding: 10px;
+          .layout-view {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            .layout-content {
+              .layout-header {
+                font-family: Google Sans, Roboto, RobotoDraft, Helvetica, Arial,
+                  sans-serif;
+                font-size: 14px;
+                font-variant-ligatures: no-contextual;
+                font-weight: 500;
+                color: #5f6368;
+                padding-bottom: 16px;
+                h2 {
+                  display: inline;
+                  font-size: 14px;
+                  font-weight: 500;
+                  margin: 0 0 0 8px;
+                }
+                .list-tool {
+                  display: flex;
+                  flex: 0 0 48px;
+                  width: 100%;
+                  align-items: center;
+                  border: 1px solid transparent;
+                  border-bottom: 1px solid #dadce0;
+                  color: rgba(0, 0, 0, 0.54);
+                  span {
+                    font-weight: bold;
+                  }
+                  .td-name {
+                    flex: 4;
+                    display: flex;
+                    align-items: center;
+                    .direction {
+                      margin-left: 5px;
+                      background: transparent;
+                      border: none;
+                      border-radius: 50%;
+                      &:hover,
+                      &:focus {
+                        outline: none;
+                      }
+                      svg {
+                        fill: #5f6368;
+                      }
+                    }
+                  }
+                  .td-owner {
+                    flex: 1;
+                  }
+                  .td-modified {
+                    flex: 2;
+                  }
+                  .td-size {
+                    flex: 1;
+                  }
+                }
+              }
+              .main-content {
+                min-height: 500px;
+                .list-group {
+                  display: flex;
+                  flex-direction: column;
+                  width: 100%;
+                  padding: 0 7px;
+                }
+              }
+            }
+          }
+        }
       }
       .react-contextmenu {
         box-shadow: 0px 5px 3px rgba(0, 0, 0, 0.15);
@@ -90,10 +278,17 @@
         .react-contextmenu-item {
           cursor: pointer;
           padding: 10px 15px;
+          &:hover,
+          &:focus {
+            background: rgba(0, 0, 0, 0.05);
+          }
           &.react-contextmenu-item--divider {
             background: #e3e2e2;
             padding: 0;
             height: 1px;
+          }
+          i {
+            margin-right: 15px;
           }
         }
       }
@@ -175,6 +370,74 @@
           border-radius: 2px;
         }
       }
+    }
+  }
+  .list-view {
+    display: flex;
+    flex: 0 0 48px;
+    width: 100%;
+    align-items: center;
+    border: 1px solid transparent;
+    border-bottom: 1px solid #dadce0;
+    color: rgba(0, 0, 0, 0.54);
+    fill: rgba(0, 0, 0, 0.54);
+    position: relative;
+    span {
+      padding-left: 2px;
+    }
+    .td-name {
+      flex: 4;
+      display: flex;
+      .icon-box {
+        width: 40px;
+        height: 48px;
+        display: flex;
+        justify-content: center;
+        img {
+          height: 16px;
+          width: 16px;
+          align-self: center;
+        }
+      }
+      .text-box {
+        width: calc(100% - 56px);
+        align-items: center;
+        display: flex;
+        .tooltip {
+          background: transparent;
+          border: none;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+          font-weight: 500;
+          overflow: hidden;
+          text-align: left;
+          padding: 0;
+          opacity: 1;
+          color: rgba(0, 0, 0, 0.72);
+          line-height: 20px;
+          font-size: 13px;
+          position: relative;
+        }
+        .popup-content {
+          background-color: rgba(0, 0, 0, 0.52) !important;
+          color: #fff !important;
+          font-size: 10px;
+          width: 100% !important;
+          height: 25px !important;
+          text-align: center;
+          border: none !important;
+          border-radius: 2px;
+        }
+      }
+    }
+    .td-owner {
+      flex: 1;
+    }
+    .td-modified {
+      flex: 2;
+    }
+    .td-size {
+      flex: 1;
     }
   }
   @media (min-width: 320px) {
