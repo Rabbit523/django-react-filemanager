@@ -37,7 +37,7 @@ export const Explorer = () => {
       path: imageGroup128.getting_started,
       content_type: "image get_started",
       name: "Getting started",
-      size: "1MB",
+      size: "",
       id: 0,
     },
   ]);

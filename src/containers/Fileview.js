@@ -52,6 +52,14 @@ export const FileView = (props) => {
 export const ListView = (props) => {
   const cur_date = moment(new Date()).format("MMM DD, YYYY");
   const file_size = props.size;
+
+  const bytesToSize = (bytes) => {
+    var sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    if (bytes == 0) return "0 Byte";
+    var i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)));
+    return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
+  };
+
   return (
     <div className="list-view" id={"live-view " + props.id}>
       <div className="td-name" id={"td-name " + props.id}>
@@ -85,7 +93,7 @@ export const ListView = (props) => {
         <span>{props.last_modified ? props.last_modified : cur_date}</span>
       </div>
       <div className="td-size" id={"td-size " + props.id}>
-        <span>{props.size ? file_size : "1MB"}</span>
+        <span>{props.size ? bytesToSize(file_size) : "1MB"}</span>
       </div>
     </div>
   );
