@@ -93,7 +93,7 @@ class FileUploadView(APIView):
                 file_instance = File.objects.create(
                     path=url,
                     content_type=file.content_type,
-                    user=User.objects.first(),
+                    user=user,
                     name=file.name,
                     size=file.size
                 )
