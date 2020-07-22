@@ -703,7 +703,7 @@ export const Drive = () => {
                       </div>
                     </div>
                   )}
-                  <div className="layout-content quick">
+                  <div className={is_gridType ? "layout-content quick" : "layout-content quick empty"}>
                     <div className="layout-header">
                       {is_gridType && <h2>Files</h2>}
                       {!is_gridType && (
