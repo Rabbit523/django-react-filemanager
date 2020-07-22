@@ -1,4 +1,9 @@
-export const availableUploadArea = ["main-content", "row"];
+export const availableUploadArea = [
+  "detail-view",
+  "quick-view",
+  "folder-view",
+  "quick-context-area",
+];
 
 export const availableDownloadArea = [
   "file-view",
@@ -14,4 +19,5 @@ export const availableDownloadArea = [
   "td-owner",
   "td-modified",
   "td-size",
+  "guesture",
 ];

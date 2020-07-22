@@ -17,10 +17,7 @@ class CustomLayout extends React.Component {
             name="Home"
             className="nav-brand"
           >
-            <img
-              src="https://www.gstatic.com/images/branding/product/1x/drive_48dp.png"
-              alt="logo"
-            ></img>
+            <img src={"/static/logo.png"} alt="logo"></img>
             <span>Drive</span>
           </Menu.Item>
           <div className="end-nav">
@@ -29,8 +26,8 @@ class CustomLayout extends React.Component {
                 <Menu.Item
                   as={NavLink}
                   exact
-                  to="/explorer"
-                  name="Explorer"
+                  to="/drive"
+                  name="My Drive"
                 ></Menu.Item>
                 <Menu.Item header onClick={() => this.props.logout()}>
                   Logout

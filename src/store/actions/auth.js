@@ -2,7 +2,7 @@ import axios from "axios";
 import * as actionTypes from "./actionTypes";
 
 const BASE_URL = "http://127.0.0.1:8000";
-const PROD_BASE_URL = "ec2-18-133-54-86.eu-west-2.compute.amazonaws.com:8000";
+const PROD_BASE_URL = "http://18.133.54.86:8000";
 
 export const authStart = () => {
   return {

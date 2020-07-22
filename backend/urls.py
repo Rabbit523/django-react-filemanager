@@ -9,6 +9,7 @@ urlpatterns = [
     path('rest-auth/', include('rest_auth.urls')),
     path('rest-auth/registration/', include('rest_auth.registration.urls')),
     path('api-upload/', include('uploadapp.urls')),
+    path('api/', include('folderapp.urls')),
     path('admin/', admin.site.urls),
     re_path(r'^.*', TemplateView.as_view(template_name='index.html')),
 ]

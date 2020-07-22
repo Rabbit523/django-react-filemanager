@@ -14,6 +14,7 @@ from botocore.exceptions import ClientError
 from botocore.client import Config
 from django.conf import settings
 from django.forms.models import model_to_dict
+from rest_framework.authtoken.models import Token
 import simplejson as json
 
 from . import aws_config
@@ -80,10 +81,12 @@ class FileUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         files = dict((request.data).lists())['file']
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
         flag = 1
         arr = []
         for file in files:
-            response = uploadfile_to_s3(file, 'admin')
+            response = uploadfile_to_s3(file, user.username)
             if response.status_code == 200 or response.status_code == 204:
                 url = 'https://s3.{}.amazonaws.com/{}/uploads/{}/{}'.format(
                     aws_config.REGION, aws_config.BUCKET_NAME, 'admin', file.name)
@@ -105,9 +108,11 @@ class FileUploadView(APIView):
 
 class FileGetView(APIView):
 
-    def get(self, request, *args, **kwargs):
-        # File.objects.filter(user=request.user)
-        files_objects = File.objects.all()
+    def post(self, request, *args, **kwargs):
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+
+        files_objects = File.objects.filter(user=user).all()
         res_arr = []
         for file in files_objects:
             res_arr.append(model_to_dict(file))

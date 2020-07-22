@@ -3,7 +3,7 @@ import { Switch, Route, Redirect } from "react-router-dom";
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
-import { Explorer } from "./pages/Explorer";
+import { Drive } from "./pages/Drive";
 import { Home } from "./pages/Home";
 
 export const PublicRoute = () => (
@@ -18,8 +18,8 @@ export const PublicRoute = () => (
 export const PrivateRoute = () => (
   <Switch>
     <Route exact path="/" component={Home} />
-    <Route path="/login" render={() => <Redirect to="/explorer" />} />
-    <Route path="/signup" render={() => <Redirect to="/explorer" />} />
-    <Route path="/explorer" component={Explorer} />
+    <Route path="/login" render={() => <Redirect to="/drive" />} />
+    <Route path="/signup" render={() => <Redirect to="/drive" />} />
+    <Route path="/drive" component={Drive} />
   </Switch>
 );

@@ -7,21 +7,24 @@ import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
 import Modal from "react-modal";
 import Popup from "reactjs-popup";
+import { animated } from "react-spring";
+import { useGesture } from "react-use-gesture";
 import { useEventListener } from "../helpers/CustomHook";
-import { getFiles, uploadFiles } from "../helpers/RestAPI";
+import { getFiles, uploadFiles, createFolder } from "../helpers/RestAPI";
 import { imageGroup128 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
 import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import { FileView, ListView } from "../containers/Fileview";
+import { FileView, ListView, FolderView } from "../containers/Views";
 import Layout from "../containers/Layout";
 
-export const Explorer = () => {
+export const Drive = () => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
   const [is_uploadingModal, setUploadingModal] = useState(false);
+  const [is_creatingModal, setCreatingModal] = useState(false);
   const [is_minimized, setMinimize] = useState(false);
   const [is_uploaded, setUploaded] = useState(false);
   const [is_context, setContext] = useState(true);
@@ -42,6 +45,8 @@ export const Explorer = () => {
     },
   ]);
   const [selected_file, setSelectedFile] = useState({});
+  const [new_folder_title, setFolderTitle] = useState("");
+  const [folders, setFolders] = useState([]);
 
   useEffect(() => {
     getFiles().then((res) => {
@@ -49,7 +54,7 @@ export const Explorer = () => {
         const quick_default_file = quick_files[0];
         const quick_arr = [];
         res.map((item, i) => {
-          if (i > res.length - 5) {
+          if (i > res.length - 6) {
             quick_arr.push(item);
           }
         });
@@ -69,23 +74,41 @@ export const Explorer = () => {
   const eventContextHandler = useCallback(
     (e) => {
       if (e.button === 2 && !isMobileOnly) {
-        if (availableUploadArea.includes(e.target.className)) {
+        if (availableUploadArea.includes(e.target.id)) {
           setContextTrigger(false);
           setContext(true);
         } else if (availableDownloadArea.includes(e.target.className)) {
-          setContextTrigger(false);
-          setContext(false);
           const cur = e.target.id.split(" ")[1];
-          const file = files.find((file) => file.id === parseInt(cur));
-          setSelectedFile(file);
+          if (cur !== "0") {
+            setContextTrigger(false);
+            setContext(false);
+            const file = files.find((file) => file.id === parseInt(cur));
+            setSelectedFile(file);
+          } else {
+            setContextTrigger(true);
+            setSelectedFile([]);
+          }
         } else {
           setContextTrigger(true);
+          setSelectedFile([]);
         }
-      } else {
-        setContextTrigger(true);
       }
     },
     [is_context, files]
+  );
+
+  const handleSortOrder = useCallback(
+    (e) => {
+      setOrder(!order_desc);
+      let ordered_files = [];
+      if (order_desc) {
+        ordered_files = files.sort((a, b) => a.name.localeCompare(b.name));
+      } else {
+        ordered_files = files.sort((a, b) => b.name.localeCompare(a.name));
+      }
+      setFiles(ordered_files);
+    },
+    [order_desc, files]
   );
 
   const handleDropdown = (type) => {
@@ -97,6 +120,9 @@ export const Explorer = () => {
   };
 
   const handleClick = (e, data) => {
+    if (data.foo === "new_folder") {
+      setCreatingModal(true);
+    }
     if (data.foo === "upload_file") {
       fileRef.current.click();
     }
@@ -144,6 +170,10 @@ export const Explorer = () => {
     setMinimize(!is_minimized);
   };
 
+  const closeCreateModal = () => {
+    setCreatingModal(false);
+  };
+
   const handleChangeLayout = () => {
     setViewType(!is_gridType);
   };
@@ -152,19 +182,53 @@ export const Explorer = () => {
     console.log("Show Detail View");
   };
 
-  const handleSortOrder = useCallback(
-    (e) => {
-      setOrder(!order_desc);
-      let ordered_files = [];
-      if (order_desc) {
-        ordered_files = files.sort((a, b) => a.name.localeCompare(b.name));
-      } else {
-        ordered_files = files.sort((a, b) => b.name.localeCompare(a.name));
+  const onHandleFolderTitle = (e) => {
+    setFolderTitle(e.target.value);
+  };
+
+  const onCreateNewFolder = () => {
+    createFolder(new_folder_title).then((res) => {
+      setCreatingModal(false);
+      const arr = [];
+      const temp = {
+        id: 0,
+        name: new_folder_title,
+      };
+      arr.push(temp);
+      setFolders(arr);
+    });
+  };
+
+  const bind = useGesture({
+    onMouseDown: (e) => {
+      if (e.button === 0) {
+        if (isMobileOnly) {
+          const cur = e.target.id.split(" ")[1];
+          if (cur !== "0") {
+            const file = files.find((file) => file.id === parseInt(cur));
+            setSelectedFile(file);
+            const file_path = file.path;
+            var a = document.createElement("A");
+            a.href = file_path;
+            a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+          } else {
+            setContextTrigger(true);
+            setSelectedFile([]);
+          }
+        } else {
+          setContextTrigger(true);
+          if (e.target.id) {
+            const cur = e.target.id.split(" ")[1];
+            const file = files.find((file) => file.id === parseInt(cur));
+            setSelectedFile(file);
+          }
+        }
       }
-      setFiles(ordered_files);
     },
-    [order_desc, files]
-  );
+  });
 
   useEventListener("mousedown", eventContextHandler);
 
@@ -316,6 +380,49 @@ export const Explorer = () => {
             </div>
           )}
         </Modal>
+        <Modal
+          isOpen={is_creatingModal}
+          onRequestClose={closeCreateModal}
+          className="create-folder-modal"
+          overlayClassName="modal-overlay"
+        >
+          <div className="modal-header">
+            <span>New folder</span>
+            <Popup
+              trigger={
+                <button className="tooltip" onClick={closeCreateModal}>
+                  <svg
+                    x="0px"
+                    y="0px"
+                    width="14px"
+                    height="14px"
+                    viewBox="0 0 10 10"
+                    focusable="false"
+                    fill="#000000"
+                  >
+                    <polygon points="10,1.01 8.99,0 5,3.99 1.01,0 0,1.01 3.99,5 0,8.99 1.01,10 5,6.01 8.99,10 10,8.99 6.01,5 "></polygon>
+                  </svg>
+                </button>
+              }
+              position="bottom center"
+              on="hover"
+              arrow={false}
+            >
+              <span className="content">Close</span>
+            </Popup>
+          </div>
+          <div className="modal-body">
+            <input className="input" onChange={onHandleFolderTitle} />
+          </div>
+          <div className="modal-footer">
+            <button className="btn" onClick={closeCreateModal}>
+              Close
+            </button>
+            <button className="btn save" onClick={onCreateNewFolder}>
+              Save
+            </button>
+          </div>
+        </Modal>
         <ContextMenuTrigger id="context-menu" disable={is_triggerable}>
           <Sidebar as={Menu} vertical visible={true}>
             <Dropdown text="New" icon={null} labeled className="button-tool">
@@ -325,7 +432,7 @@ export const Explorer = () => {
                   label="New folder"
                   onClick={(e) => handleDropdown("new_folder")}
                 ></Dropdown.Item>
-                <Dropdown.Divider divider />
+                <Dropdown.Divider />
                 <Dropdown.Item
                   icon="upload"
                   label="Upload files"
@@ -336,7 +443,7 @@ export const Explorer = () => {
                   label="Upload folder"
                   onClick={(e) => handleDropdown("upload_folder")}
                 ></Dropdown.Item>
-                <Dropdown.Divider divider />
+                <Dropdown.Divider />
                 <Dropdown.Item
                   icon="google"
                   label="Google Docs"
@@ -367,7 +474,7 @@ export const Explorer = () => {
                       label="New folder"
                       onClick={(e) => handleDropdown("new_folder")}
                     ></Dropdown.Item>
-                    <Dropdown.Divider divider />
+                    <Dropdown.Divider />
                     <Dropdown.Item
                       icon="upload"
                       label="Upload files"
@@ -378,7 +485,7 @@ export const Explorer = () => {
                       label="Upload folder"
                       onClick={(e) => handleDropdown("upload_folder")}
                     ></Dropdown.Item>
-                    <Dropdown.Divider divider />
+                    <Dropdown.Divider />
                     <Dropdown.Item
                       icon="google"
                       label="Google Docs"
@@ -427,27 +534,56 @@ export const Explorer = () => {
             <div className="context-area">
               {files.length > 0 ? (
                 <div className="layout-view">
-                  <div className="layout-content">
+                  <div className="layout-content quick">
                     <div className="layout-header">
                       <h2>Quick Access</h2>
                     </div>
                     <div className="main-content">
-                      <div className="container">
-                        <div className="row">
-                          {quick_files.map((item, i) => (
-                            <FileView
-                              key={i}
-                              path={item.path}
-                              type={item.content_type}
-                              name={item.name}
-                              id={item.id}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                      {quick_files.map((item, i) => (
+                        <animated.div
+                          {...bind()}
+                          className={
+                            item.id === selected_file.id
+                              ? "guesture active"
+                              : "guesture"
+                          }
+                          id={"guesture " + item.id}
+                          key={i}
+                        >
+                          <FileView
+                            path={item.path}
+                            type={item.content_type}
+                            name={item.name}
+                            id={item.id}
+                          />
+                        </animated.div>
+                      ))}
                     </div>
                   </div>
-                  <div className="layout-content">
+                  {folders.length > 0 && is_gridType && (
+                    <div className="layout-content folder">
+                      <div className="layout-header">
+                        <h2>Folders</h2>
+                      </div>
+                      <div className="main-content" id="folder-view">
+                        {folders.map((item, i) => (
+                          <animated.div
+                            {...bind()}
+                            className={
+                              item.id === selected_file.id
+                                ? "guesture active"
+                                : "guesture"
+                            }
+                            id={"guesture " + item.id}
+                            key={i}
+                          >
+                            <FolderView name={item.name} id={item.id} />
+                          </animated.div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="layout-content file">
                     <div className="layout-header">
                       {is_gridType && <h2>Files</h2>}
                       {!is_gridType && (
@@ -492,44 +628,84 @@ export const Explorer = () => {
                         </div>
                       )}
                     </div>
-                    <div className="main-content">
-                      <div className="container">
-                        <div className="row">
-                          {is_gridType &&
-                            files.map((item, i) => (
-                              <FileView
-                                key={i}
-                                path={item.path}
+                    <div className="main-content" id="detail-view">
+                      {is_gridType &&
+                        files.map((item, i) => (
+                          <animated.div
+                            {...bind()}
+                            className={
+                              item.id === selected_file.id
+                                ? "guesture active"
+                                : "guesture"
+                            }
+                            id={"guesture " + item.id}
+                            key={i}
+                          >
+                            <FileView
+                              path={item.path}
+                              type={item.content_type}
+                              name={item.name}
+                              id={item.id}
+                            />
+                          </animated.div>
+                        ))}
+                      {!is_gridType && (
+                        <div className="list-group">
+                          {files.map((item, i) => (
+                            <animated.div
+                              {...bind()}
+                              className={
+                                item.id === selected_file.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              id={"guesture " + item.id}
+                              key={i}
+                            >
+                              <ListView
+                                owner=""
+                                last_modified=""
                                 type={item.content_type}
                                 name={item.name}
+                                size={item.size}
                                 id={item.id}
                               />
-                            ))}
-                          {!is_gridType && (
-                            <div className="list-group">
-                              {files.map((item, i) => (
-                                <ListView
-                                  key={i}
-                                  owner=""
-                                  last_modified=""
-                                  type={item.content_type}
-                                  name={item.name}
-                                  size={item.size}
-                                  id={item.id}
-                                />
-                              ))}
-                            </div>
-                          )}
+                            </animated.div>
+                          ))}
                         </div>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="layout-view">
-                  <div className="layout-content">
+                <div className="layout-view" id="quick-context-area">
+                  {folders.length > 0 && (
+                    <div className="layout-content folder">
+                      <div className="layout-header">
+                        <h2>Folders</h2>
+                      </div>
+                      <div className="main-content" id="folder-view">
+                        {is_gridType &&
+                          folders.map((item, i) => (
+                            <animated.div
+                              {...bind()}
+                              className={
+                                item.id === selected_file.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              id={"guesture " + item.id}
+                              key={i}
+                            >
+                              <FolderView name={"asd"} id={"0"} />
+                            </animated.div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+                  <div className="layout-content quick">
                     <div className="layout-header">
-                      {is_gridType && <h2>Quick Access</h2>}
+                      {is_gridType && <h2>Files</h2>}
                       {!is_gridType && (
                         <div className="list-tool">
                           <div className="td-name">
@@ -572,33 +748,33 @@ export const Explorer = () => {
                         </div>
                       )}
                     </div>
-                    <div className="main-content">
-                      <div className="container">
-                        <div className="row">
-                          {is_gridType &&
-                            quick_files.map((item, i) => (
-                              <FileView
-                                key={i}
-                                path={item.path}
-                                type={item.content_type}
-                                name={item.name}
-                                id={item.id}
-                              />
-                            ))}
-                          {!is_gridType &&
-                            quick_files.map((item, i) => (
-                              <ListView
-                                key={i}
-                                owner=""
-                                last_modified=""
-                                type={item.content_type}
-                                name={item.name}
-                                size={item.size}
-                                id={item.id}
-                              />
-                            ))}
-                        </div>
-                      </div>
+                    <div className="main-content" id="quick-view">
+                      {is_gridType &&
+                        quick_files.map((item, i) => (
+                          <div className="guesture">
+                            <FileView
+                              key={i}
+                              path={item.path}
+                              type={item.content_type}
+                              name={item.name}
+                              id={item.id}
+                            />
+                          </div>
+                        ))}
+                      {!is_gridType &&
+                        quick_files.map((item, i) => (
+                          <div className="guesture">
+                            <ListView
+                              key={i}
+                              owner=""
+                              last_modified=""
+                              type={item.content_type}
+                              name={item.name}
+                              size={item.size}
+                              id={item.id}
+                            />
+                          </div>
+                        ))}
                     </div>
                   </div>
                 </div>

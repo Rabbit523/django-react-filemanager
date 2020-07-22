@@ -54,8 +54,7 @@ export const imageGroup128 = {
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_powerpoint_x128.png",
   pdf:
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_pdf_x128.png",
-  getting_started:
-    "https://images2.imgbox.com/ec/55/ZZt0w3pA_o.png",
+  getting_started: "https://images2.imgbox.com/ec/55/ZZt0w3pA_o.png",
   unkown:
     "https://drive-thirdparty.googleusercontent.com/128/type/application/x-ms-dos-executable",
 };
