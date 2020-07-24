@@ -94,4 +94,5 @@ AUTHENTICATION_BACKENDS = [
 ]
 
 AUTH_USER_MODEL = 'accounts.CustomUser'
+FOLDER_MODEL = 'folderapp.Folders'
 AUTHENTICATION_BACKENDS = ['accounts.backends.EmailBackend']

@@ -7,22 +7,31 @@ import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
 import Modal from "react-modal";
 import Popup from "reactjs-popup";
+import Downloader from "js-file-downloader";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
 import { useEventListener } from "../helpers/CustomHook";
-import { getFiles, uploadFiles, createFolder } from "../helpers/RestAPI";
+import {
+  getFiles,
+  uploadFiles,
+  createFolder,
+  uploadFolder,
+  getFolders,
+} from "../helpers/RestAPI";
 import { imageGroup128 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
 import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import { FileView, ListView, FolderView } from "../containers/Views";
+import FolderView, { FileView, ListView } from "../containers/Views";
 import Layout from "../containers/Layout";
 
 export const Drive = () => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
+  const folderRef = useRef();
+
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
   const [is_minimized, setMinimize] = useState(false);
@@ -34,6 +43,7 @@ export const Drive = () => {
   const [file_count, setFileCount] = useState(0);
   const [total_file_count, setTotalFileCount] = useState(0);
   const [uploading_files, setUploadingFiles] = useState([]);
+  const [uploading_folders, setUploadingFolders] = useState([]);
   const [files, setFiles] = useState([]);
   const [quick_files, setQuickFiles] = useState([
     {
@@ -44,26 +54,44 @@ export const Drive = () => {
       id: 0,
     },
   ]);
+  const [quick_file, setQuickFile] = useState({});
   const [selected_file, setSelectedFile] = useState({});
+  const [selected_folder, setSelectedFolder] = useState({});
   const [new_folder_title, setFolderTitle] = useState("");
   const [folders, setFolders] = useState([]);
 
   useEffect(() => {
     getFiles().then((res) => {
       if (res.length > 0) {
-        const quick_default_file = quick_files[0];
         const quick_arr = [];
         res.map((item, i) => {
-          if (i > res.length - 6) {
-            quick_arr.push(item);
+          if (res.length > 5) {
+            if (i > res.length - 6) {
+              quick_arr.push(item);
+            }
+          } else {
+            if (i < res.length) {
+              quick_arr.push(item);
+            }
           }
         });
         setQuickFiles(quick_arr);
-        const file_arr = [quick_default_file].concat(res);
+        const file_arr = [
+          {
+            path: imageGroup128.getting_started,
+            content_type: "image get_started",
+            name: "Getting started",
+            size: "",
+            id: 0,
+          },
+        ].concat(res);
         setFiles(file_arr);
       } else {
         setFiles(res);
       }
+    });
+    getFolders().then((res) => {
+      setFolders(res);
     });
   }, [is_uploaded]);
 
@@ -78,19 +106,46 @@ export const Drive = () => {
           setContextTrigger(false);
           setContext(true);
         } else if (availableDownloadArea.includes(e.target.className)) {
-          const cur = e.target.id.split(" ")[1];
+          const cur = e.target.id.split(" ")[2];
+          const type = e.target.id.split(" ")[1];
+          const access = e.target.id.split(" ")[3]
+            ? e.target.id.split(" ")[3]
+            : "";
           if (cur !== "0") {
             setContextTrigger(false);
             setContext(false);
-            const file = files.find((file) => file.id === parseInt(cur));
-            setSelectedFile(file);
+            if (type === "file") {
+              setSelectedFolder({});
+              if (access === "detail") {
+                const file = files.find((file) => file.id === parseInt(cur));
+                setSelectedFile(file);
+                setQuickFile({});
+              } else {
+                const file = quick_files.find(
+                  (file) => file.id === parseInt(cur)
+                );
+                setQuickFile(file);
+                setSelectedFile({});
+              }
+            } else {
+              setSelectedFile({});
+              setQuickFile({});
+              const folder = folders.find(
+                (folder) => folder.id === parseInt(cur)
+              );
+              setSelectedFolder(folder);
+            }
           } else {
             setContextTrigger(true);
-            setSelectedFile([]);
+            setSelectedFile({});
+            setQuickFile({});
+            setSelectedFolder({});
           }
         } else {
           setContextTrigger(true);
-          setSelectedFile([]);
+          setSelectedFile({});
+          setQuickFile({});
+          setSelectedFolder({});
         }
       }
     },
@@ -114,27 +169,26 @@ export const Drive = () => {
   const handleDropdown = (type) => {
     if (type === "upload_file") {
       fileRef.current.click();
-    } else {
-      console.log(type);
     }
   };
 
-  const handleClick = (e, data) => {
+  const handleClick = async (e, data) => {
     if (data.foo === "new_folder") {
       setCreatingModal(true);
     }
     if (data.foo === "upload_file") {
       fileRef.current.click();
     }
+    if (data.foo === "upload_folder") {
+      folderRef.current.directory = true;
+      folderRef.current.webkitdirectory = true;
+      folderRef.current.click();
+    }
     if (data.foo === "download") {
       if (selected_file) {
-        const file_path = selected_file.path;
-        var a = document.createElement("A");
-        a.href = file_path;
-        a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        new Downloader({ url: selected_file.path })
+          .then((res) => console.log(res))
+          .catch((e) => console.warn(e));
       }
     }
   };
@@ -146,6 +200,7 @@ export const Drive = () => {
       formData.append("file", file);
       file_arr.push(file);
     });
+    formData.append("directory", null);
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
     setUploadingModal(true);
@@ -160,10 +215,36 @@ export const Drive = () => {
     });
   };
 
+  const handleChangeFolder = async (e) => {
+    var formData = new FormData();
+    var directory = "";
+    Object.values(e.target.files).forEach((file) => {
+      formData.append("file", file);
+      directory = file.webkitRelativePath;
+    });
+    formData.append("directory", directory.split("/")[0]);
+    var arr = [];
+    arr.push({
+      name: directory.split("/")[0],
+      count: e.target.files.length,
+    });
+    setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
+    setFileCount(file_count + 1);
+    setUploadingModal(true);
+    uploadFolder(formData).then((res) => {
+      const arr = [];
+      arr.push(res);
+      setFolders(arr);
+      setUploaded(true);
+      setFileCount(0);
+    });
+  };
+
   const closeModal = () => {
     setUploadingModal(false);
     setTotalFileCount(0);
     setUploadingFiles([]);
+    setUploadingFolders([]);
   };
 
   const minimizeModal = () => {
@@ -190,11 +271,7 @@ export const Drive = () => {
     createFolder(new_folder_title).then((res) => {
       setCreatingModal(false);
       const arr = [];
-      const temp = {
-        id: 0,
-        name: new_folder_title,
-      };
-      arr.push(temp);
+      arr.push(res);
       setFolders(arr);
     });
   };
@@ -203,27 +280,52 @@ export const Drive = () => {
     onMouseDown: (e) => {
       if (e.button === 0) {
         if (isMobileOnly) {
-          const cur = e.target.id.split(" ")[1];
+          const cur = e.target.id.split(" ")[2];
+          const type = e.target.id.split(" ")[1];
           if (cur !== "0") {
-            const file = files.find((file) => file.id === parseInt(cur));
-            setSelectedFile(file);
-            const file_path = file.path;
-            var a = document.createElement("A");
-            a.href = file_path;
-            a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            if (type === "file") {
+              setSelectedFolder({});
+              const file = files.find((file) => file.id === parseInt(cur));
+              setSelectedFile(file);
+              const file_path = file.path;
+              var a = document.createElement("A");
+              a.href = file_path;
+              a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            }
           } else {
             setContextTrigger(true);
-            setSelectedFile([]);
+            setSelectedFile({});
+            setSelectedFolder({});
           }
         } else {
           setContextTrigger(true);
-          if (e.target.id) {
-            const cur = e.target.id.split(" ")[1];
-            const file = files.find((file) => file.id === parseInt(cur));
-            setSelectedFile(file);
+          const cur = e.target.id.split(" ")[2];
+          const type = e.target.id.split(" ")[1];
+          const access = e.target.id.split(" ")[3]
+            ? e.target.id.split(" ")[3]
+            : "";
+          if (type === "file") {
+            setSelectedFolder({});
+            if (access === "detail") {
+              const file = files.find((file) => file.id === parseInt(cur));
+              setSelectedFile(file);
+              setQuickFile({});
+            } else {
+              const file = quick_files.find(
+                (file) => file.id === parseInt(cur)
+              );
+              setQuickFile(file);
+              setSelectedFile({});
+            }
+          } else {
+            setSelectedFile({});
+            const folder = folders.find(
+              (folder) => folder.id === parseInt(cur)
+            );
+            setSelectedFolder(folder);
           }
         }
       }
@@ -377,6 +479,71 @@ export const Drive = () => {
                   </div>
                 </div>
               ))}
+              {Object.values(uploading_folders).map((folder, i) => (
+                <div className="item" key={i}>
+                  <div className="content">
+                    <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <svg
+                        x="0px"
+                        y="0px"
+                        focusable="false"
+                        viewBox="0 0 24 24"
+                        height="24px"
+                        width="24px"
+                        fill="#5f6368"
+                      >
+                        <g>
+                          <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                          <path d="M0 0h24v24H0z" fill="none"></path>
+                        </g>
+                      </svg>
+                    </div>
+                    <div className={!is_uploaded ? "name loading" : "name"}>
+                      <span>{folder.name}</span>
+                      <span>
+                        {!is_uploaded ? 0 : folder.count} of {folder.count}
+                      </span>
+                    </div>
+                    <div className="status">
+                      {!is_uploaded ? (
+                        <ReactLoading
+                          type="spin"
+                          color="#929292"
+                          className="loading"
+                        />
+                      ) : (
+                        <div className="icon">
+                          <ReactHoverObserver>
+                            {({ isHovering }) => (
+                              <React.Fragment>
+                                {isHovering ? (
+                                  <svg
+                                    width="24px"
+                                    height="24px"
+                                    viewBox="0 0 24 24"
+                                    focusable="false"
+                                  >
+                                    <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
+                                  </svg>
+                                ) : (
+                                  <svg
+                                    width="24px"
+                                    height="24px"
+                                    viewBox="0 0 24 24"
+                                    fill="#0F9D58"
+                                  >
+                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                  </svg>
+                                )}
+                              </React.Fragment>
+                            )}
+                          </ReactHoverObserver>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </Modal>
@@ -451,7 +618,7 @@ export const Drive = () => {
                 ></Dropdown.Item>
               </Dropdown.Menu>
             </Dropdown>
-            <Menu.Item as={Link} to="/explorer">
+            <Menu.Item as={Link} exact to="/drive">
               <svg
                 width="24px"
                 height="24px"
@@ -543,11 +710,11 @@ export const Drive = () => {
                         <animated.div
                           {...bind()}
                           className={
-                            item.id === selected_file.id
+                            quick_file && item.id === quick_file.id
                               ? "guesture active"
                               : "guesture"
                           }
-                          id={"guesture " + item.id}
+                          id={"guesture file " + item.id + " quick"}
                           key={i}
                         >
                           <FileView
@@ -555,6 +722,7 @@ export const Drive = () => {
                             type={item.content_type}
                             name={item.name}
                             id={item.id}
+                            access="quick"
                           />
                         </animated.div>
                       ))}
@@ -570,11 +738,11 @@ export const Drive = () => {
                           <animated.div
                             {...bind()}
                             className={
-                              item.id === selected_file.id
+                              selected_folder && item.id === selected_folder.id
                                 ? "guesture active"
                                 : "guesture"
                             }
-                            id={"guesture " + item.id}
+                            id={"guesture folder " + item.id}
                             key={i}
                           >
                             <FolderView name={item.name} id={item.id} />
@@ -634,11 +802,11 @@ export const Drive = () => {
                           <animated.div
                             {...bind()}
                             className={
-                              item.id === selected_file.id
+                              selected_file && item.id === selected_file.id
                                 ? "guesture active"
                                 : "guesture"
                             }
-                            id={"guesture " + item.id}
+                            id={"guesture file " + item.id + " detail"}
                             key={i}
                           >
                             <FileView
@@ -646,6 +814,7 @@ export const Drive = () => {
                               type={item.content_type}
                               name={item.name}
                               id={item.id}
+                              access="detail"
                             />
                           </animated.div>
                         ))}
@@ -655,16 +824,16 @@ export const Drive = () => {
                             <animated.div
                               {...bind()}
                               className={
-                                item.id === selected_file.id
+                                selected_file && item.id === selected_file.id
                                   ? "guesture active"
                                   : "guesture"
                               }
-                              id={"guesture " + item.id}
+                              id={"guesture file " + item.id}
                               key={i}
                             >
                               <ListView
                                 owner=""
-                                last_modified=""
+                                last_modified={item.modified_date}
                                 type={item.content_type}
                                 name={item.name}
                                 size={item.size}
@@ -690,20 +859,21 @@ export const Drive = () => {
                             <animated.div
                               {...bind()}
                               className={
-                                item.id === selected_file.id
+                                selected_folder &&
+                                item.id === selected_folder.id
                                   ? "guesture active"
                                   : "guesture"
                               }
-                              id={"guesture " + item.id}
+                              id={"guesture folder " + item.id}
                               key={i}
                             >
-                              <FolderView name={"asd"} id={"0"} />
+                              <FolderView name={item.name} id={item.id} />
                             </animated.div>
                           ))}
                       </div>
                     </div>
                   )}
-                  <div className={is_gridType ? "layout-content quick" : "layout-content quick empty"}>
+                  <div className="layout-content quick">
                     <div className="layout-header">
                       {is_gridType && <h2>Files</h2>}
                       {!is_gridType && (
@@ -767,7 +937,7 @@ export const Drive = () => {
                             <ListView
                               key={i}
                               owner=""
-                              last_modified=""
+                              last_modified={item.modified_date}
                               type={item.content_type}
                               name={item.name}
                               size={item.size}
@@ -800,6 +970,14 @@ export const Drive = () => {
                 </MenuItem>
                 <MenuItem data={{ foo: "upload_folder" }} onClick={handleClick}>
                   <Icon name="folder outline" /> Upload folder
+                  <input
+                    type="file"
+                    hidden
+                    multiple
+                    webkitdirectory
+                    onChange={handleChangeFolder}
+                    ref={folderRef}
+                  />
                 </MenuItem>
                 <MenuItem divider />
                 <MenuItem data={{ foo: "google_doc" }} onClick={handleClick}>

@@ -37,9 +37,9 @@ export const matchImageResource16 = (props) => {
     ? imageGroup16.msdos
     : props.type.includes("exe")
     ? imageGroup16.exe
-    : props.type.includes("props")
-    ? imageGroup16.props
-    : imageGroup16.props;
+    : props.type.includes("octet-stream")
+    ? imageGroup128.file
+    : imageGroup16.file;
 };
 
 export const matchImageResource128 = (props) => {
@@ -79,7 +79,7 @@ export const matchImageResource128 = (props) => {
     ? imageGroup128.msdos
     : props.type.includes("exe")
     ? imageGroup128.exe
-    : props.type.includes("props")
-    ? imageGroup128.props
-    : imageGroup128.props;
+    : props.type.includes("octet-stream")
+    ? imageGroup128.file
+    : imageGroup128.file;
 };

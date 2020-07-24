@@ -8,17 +8,18 @@ from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from django.http import HttpResponse, Http404
 from botocore.exceptions import ClientError
 from botocore.client import Config
 from django.conf import settings
 from django.forms.models import model_to_dict
-from rest_framework.authtoken.models import Token
-import simplejson as json
+from django.utils.encoding import smart_str
 
 from . import aws_config
-from .models import File, User
+from .models import File, User, Folder
 
 
 def some_view(request):
@@ -27,7 +28,7 @@ def some_view(request):
     return HttpResponse(qs_json, content_type='application/json')
 
 
-def create_presigned_post(object_name, filetype, username):
+def create_presigned_post(object_name, directory, filetype, username):
 
     # Generate a presigned S3 POST URL
 
@@ -38,11 +39,15 @@ def create_presigned_post(object_name, filetype, username):
         aws_access_key_id=aws_config.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=aws_config.AWS_ACCESS_KEY,
     )
+    if directory is None:
+        path = '{}/{}'.format(username, object_name)
+    else:
+        path = '{}/{}/{}'.format(username, directory, object_name)
 
     try:
         response = s3_client.generate_presigned_post(
             Bucket=aws_config.BUCKET_NAME,
-            Key='uploads/{}/{}'.format(username, object_name),
+            Key=path,
             Fields={"acl": "public-read", "Content-Type": filetype,
                     "success_action_redirect": "http://127.0.0.1:8000"},
             Conditions=[{"acl": "public-read"}, {"Content-Type": filetype},
@@ -56,14 +61,15 @@ def create_presigned_post(object_name, filetype, username):
     return response
 
 
-def uploadfile_to_s3(file, username):
+def uploadfile_to_s3(file, directory, username):
 
     # path where file can be saved
     file_path = os.path.join(settings.MEDIA_ROOT, file.name)
     default_storage.save(file.name, ContentFile(file.read()))
 
     # Generate a presigned S3 POST URL
-    response = create_presigned_post(file.name, file.content_type, username)
+    response = create_presigned_post(
+        file.name, directory, file.content_type, username)
     if response is None:
         return None
 
@@ -81,20 +87,30 @@ class FileUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         files = dict((request.data).lists())['file']
+        directory = request.data['directory']
+        if (directory is None) or (directory == 'null'):
+            directory = None
+        else:
+            directory = request.data['directory']
         token = request.data['token']
         user = Token.objects.get(key=token).user
         flag = 1
         arr = []
         for file in files:
-            response = uploadfile_to_s3(file, user.username)
+            response = uploadfile_to_s3(file, directory, user.username)
             if response.status_code == 200 or response.status_code == 204:
-                url = 'https://s3.{}.amazonaws.com/{}/uploads/{}/{}'.format(
-                    aws_config.REGION, aws_config.BUCKET_NAME, 'admin', file.name)
+                if directory is None:
+                    url = 'https://s3.{}.amazonaws.com/{}/{}/{}'.format(
+                        aws_config.REGION, aws_config.BUCKET_NAME, user.username, file.name)
+                else:
+                    url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
+                        aws_config.REGION, aws_config.BUCKET_NAME, user.username, directory, file.name)
                 file_instance = File.objects.create(
                     path=url,
                     content_type=file.content_type,
                     user=user,
                     name=file.name,
+                    directory=directory,
                     size=file.size
                 )
                 arr.append(model_to_dict(file_instance))
@@ -106,13 +122,63 @@ class FileUploadView(APIView):
             return Response(arr, status=status.HTTP_400_BAD_REQUEST)
 
 
+class FolderUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        files = dict((request.data).lists())['file']
+        directory = request.data['directory']
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+        flag = 1
+        res_json = None
+        for file in files:
+            response = uploadfile_to_s3(file, directory, user.username)
+            if response.status_code == 200 or response.status_code == 204:
+                url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
+                    aws_config.REGION, aws_config.BUCKET_NAME, user.username, directory, file.name)
+                File.objects.create(
+                    path=url,
+                    content_type=file.content_type,
+                    user=user,
+                    name=file.name,
+                    directory=directory,
+                    size=file.size
+                )
+            else:
+                flag = 0
+        if flag == 1:
+            folder_instance = Folder.objects.create(name=directory, user=user)
+            res_json = model_to_dict(folder_instance)
+            return Response(res_json, status=status.HTTP_200_OK)
+        else:
+            return Response(res_json, status=status.HTTP_400_BAD_REQUEST)
+
+
 class FileGetView(APIView):
 
     def post(self, request, *args, **kwargs):
         token = request.data['token']
         user = Token.objects.get(key=token).user
 
-        files_objects = File.objects.filter(user=user).all()
+        files_objects = File.objects.filter(
+            user=user).filter(directory=None).all()
+        res_arr = []
+        for file in files_objects:
+            res_arr.append(model_to_dict(file))
+
+        return Response(res_arr, status=status.HTTP_200_OK)
+
+
+class FileByDirectoryGetView(APIView):
+
+    def post(self, request, *args, **kwargs):
+        directory = request.data['directory']
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+
+        files_objects = File.objects.filter(
+            user=user).filter(directory=directory).all()
         res_arr = []
         for file in files_objects:
             res_arr.append(model_to_dict(file))

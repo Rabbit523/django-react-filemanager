@@ -1,4 +1,5 @@
 import React from "react";
+import { withRouter } from "react-router-dom";
 import Popup from "reactjs-popup";
 import moment from "moment";
 import {
@@ -7,33 +8,50 @@ import {
 } from "../helpers/MatchImageResource";
 
 export const FileView = (props) => {
+  const extra_id = props.access ? props.id + " " + props.access : props.id;
+  const image_style = {
+    backgroundImage: `url(${props.path})`,
+    backgroundRepeat: "no-repeat",
+    backgroundSize: "cover",
+    width: "100%",
+    height: "auto",
+  };
   return (
-    <div className="file-view" id={"file-view " + props.id}>
-      <div className="image-view" id={"image-view " + props.id}>
-        <img
-          src={matchImageResource128(props)}
-          alt={props.name}
-          className={!props.type.includes("image") ? "icon" : "image"}
-          id={
-            !props.type.includes("image")
-              ? "icon " + props.id
-              : "image " + props.id
-          }
-        />
-      </div>
-      <div className="detail-view" id={"detail-view " + props.id}>
-        <div className="icon-box" id={"icon-box " + props.id}>
+    <div className="file-view" id={"file-view file " + extra_id}>
+      {props.type.includes("image") ? (
+        <div
+          className="image-view transparent"
+          id={"image-view file " + extra_id}
+        >
+          <div
+            className="image"
+            id={"image file " + extra_id}
+            style={image_style}
+          />
+        </div>
+      ) : (
+        <div className="image-view" id={"image-view file " + extra_id}>
+          <img
+            src={matchImageResource128(props)}
+            alt={props.name}
+            className="icon"
+            id={"icon file " + extra_id}
+          />
+        </div>
+      )}
+      <div className="detail-view" id={"detail-view file " + extra_id}>
+        <div className="icon-box" id={"icon-box file " + extra_id}>
           <img
             src={matchImageResource16(props)}
             alt={props.name}
             className="icon"
-            id={"icon " + props.id}
+            id={"icon file " + extra_id}
           />
         </div>
-        <div className="text-box" id={"text-box " + props.id}>
+        <div className="text-box" id={"text-box file " + extra_id}>
           <Popup
             trigger={
-              <button className="tooltip" id={"tooltip " + props.id}>
+              <button className="tooltip" id={"tooltip file " + extra_id}>
                 {props.name}
               </button>
             }
@@ -61,20 +79,20 @@ export const ListView = (props) => {
   };
 
   return (
-    <div className="list-view" id={"live-view " + props.id}>
-      <div className="td-name" id={"td-name " + props.id}>
-        <div className="icon-box" id={"icon-box " + props.id}>
+    <div className="list-view" id={"live-view file " + props.id}>
+      <div className="td-name" id={"td-name file " + props.id}>
+        <div className="icon-box" id={"icon-box file " + props.id}>
           <img
             src={matchImageResource16(props)}
             alt={props.name}
             className="icon"
-            id={"icon " + props.id}
+            id={"icon file " + props.id}
           />
         </div>
-        <div className="text-box" id={"text-box " + props.id}>
+        <div className="text-box" id={"text-box file " + props.id}>
           <Popup
             trigger={
-              <button className="tooltip" id={"tooltip " + props.id}>
+              <button className="tooltip" id={"tooltip file " + props.id}>
                 {props.name}
               </button>
             }
@@ -86,23 +104,32 @@ export const ListView = (props) => {
           </Popup>
         </div>
       </div>
-      <div className="td-owner" id={"td-owner " + props.id}>
+      <div className="td-owner" id={"td-owner file " + props.id}>
         <span>{props.owner ? props.owner : "me"}</span>
       </div>
-      <div className="td-modified" id={"td-modified " + props.id}>
+      <div className="td-modified" id={"td-modified file " + props.id}>
         <span>{props.last_modified ? props.last_modified : cur_date}</span>
       </div>
-      <div className="td-size" id={"td-size " + props.id}>
+      <div className="td-size" id={"td-size file " + props.id}>
         <span>{props.size ? bytesToSize(file_size) : "_"}</span>
       </div>
     </div>
   );
 };
 
-export const FolderView = (props) => {
+const FolderView = (props) => {
   return (
-    <div className="folder-view" id={"folder-view " + props.id}>
-      <div className="icon-box" id={"icon-box " + props.id}>
+    <div
+      className="folder-view"
+      id={"folder-view folder " + props.id}
+      onDoubleClick={() =>
+        props.history.push({
+          pathname: `/drive/${props.name}`,
+          state: { name: props.name },
+        })
+      }
+    >
+      <div className="icon-box" id={"icon-box folder " + props.id}>
         <svg
           x="0px"
           y="0px"
@@ -118,16 +145,17 @@ export const FolderView = (props) => {
           </g>
         </svg>
       </div>
-      <div className="text-box" id={"text-box " + props.id}>
+      <div className="text-box" id={"text-box folder " + props.id}>
         <Popup
           trigger={
-            <button className="tooltip" id={"tooltip " + props.id}>
+            <button className="tooltip" id={"tooltip folder " + props.id}>
               {props.name}
             </button>
           }
           position="top center"
           on="hover"
           arrow={false}
+          unselectable="on"
         >
           <div>{props.name}</div>
         </Popup>
@@ -135,3 +163,5 @@ export const FolderView = (props) => {
     </div>
   );
 };
+
+export default withRouter(FolderView);

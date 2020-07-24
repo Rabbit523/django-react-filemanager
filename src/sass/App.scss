@@ -226,6 +226,7 @@
                   border: 1px solid transparent;
                   border-bottom: 1px solid #dadce0;
                   color: rgba(0, 0, 0, 0.54);
+                  padding-bottom: 8px;
                   span {
                     font-weight: bold;
                   }
@@ -259,17 +260,13 @@
                 }
               }
               &.quick {
-                &.empty {
-                  .guesture {
-                    width: 100%;
-                  }
-                }
+                padding-bottom: 8px;
                 .main-content {
                   min-height: 250px;
                 }
               }
               &.folder {
-                padding-bottom: 8px;
+                padding: 15px 0 8px 0;
                 .main-content {
                   min-height: 64px;
                 }
@@ -282,9 +279,16 @@
                 display: flex;
                 flex-wrap: wrap;
                 .guesture {
+                  height: min-content;
                   &.active {
                     .detail-view {
                       background: #e8f0fe;
+                    }
+                    .folder-view {
+                      background: #e8f0fe;
+                    }
+                    .tooltip {
+                      color: #1967d2;
                     }
                   }
                 }
@@ -346,9 +350,30 @@
       position: relative;
       display: flex;
       justify-content: center;
+      &.transparent {
+        background-color: white;
+        background-image: linear-gradient(
+            45deg,
+            #efefef 25%,
+            transparent 25%,
+            transparent 75%,
+            #efefef 75%,
+            #efefef
+          ),
+          linear-gradient(
+            45deg,
+            #efefef 25%,
+            transparent 25%,
+            transparent 75%,
+            #efefef 75%,
+            #efefef
+          );
+        background-position: 0 0, 10px 10px;
+        background-size: 21px 21px;
+      }
       img {
         width: 100%;
-        height: 100%;
+        height: auto;
         &.icon {
           align-self: center;
           margin-bottom: 48px;
@@ -544,6 +569,7 @@
         line-height: 20px;
         font-size: 13px;
         position: relative;
+        user-select: none;
       }
       .popup-content {
         background-color: rgba(0, 0, 0, 0.52) !important;
@@ -713,6 +739,7 @@
   z-index: 1073;
   transition: opacity 0.2s;
   background: #fff;
+  width: 350px;
   &:focus {
     outline: none;
   }
@@ -725,7 +752,6 @@
     color: #fff;
     font-size: 14px;
     height: 52px;
-    width: 300px;
     line-height: normal;
     .loading-status {
       flex: 0 1 auto;
@@ -736,7 +762,6 @@
       padding-right: 24px;
       text-overflow: ellipsis;
       white-space: nowrap;
-      width: 362px;
     }
     .btn-group {
       display: flex;
@@ -748,7 +773,6 @@
         flex-direction: row;
         align-items: center;
         justify-content: center;
-        margin: 0 8px;
         outline: none;
         transition: color 200ms cubic-bezier(0.4, 0, 0.2, 1),
           background 200ms cubic-bezier(0.4, 0, 0.2, 1),
@@ -793,7 +817,6 @@
     }
   }
   .modal-body {
-    width: 300px;
     max-height: 500px;
     &.extra {
       overflow-y: scroll;
@@ -802,26 +825,22 @@
       display: block;
       border-bottom: solid 1px #eee;
       color: #222;
-      padding-bottom: 6px;
+      padding: 3px 0;
       position: relative;
       cursor: pointer;
       .content {
         display: flex;
         min-height: 30px;
-        padding: 0 10px;
+        align-items: center;
         .logo {
           display: inline-block;
-          left: 0;
           line-height: normal;
-          margin: 0 10px 0 10px;
-          position: absolute;
-          padding-top: 15px;
           &.loading {
             opacity: 0.5;
           }
           img {
-            width: 16px;
-            height: 16px;
+            width: 24px;
+            height: 24px;
           }
         }
         .name {
@@ -829,8 +848,8 @@
           flex: 1 1 auto;
           overflow: hidden;
           text-overflow: ellipsis;
-          padding-top: 12px;
-          max-width: 250px;
+          min-width: 250px;
+          align-self: end;
           &.loading {
             opacity: 0.5;
           }
@@ -839,7 +858,7 @@
               flex: 0 1 auto;
               height: 25px;
               margin-top: 1px;
-              min-width: 25px;
+              min-width: 125px;
               padding-left: 30px;
               overflow: hidden;
               text-overflow: ellipsis;
@@ -849,11 +868,11 @@
               flex: 1 0 auto;
               color: #757575;
               margin-top: 1px;
+              padding-left: 25px;
             }
           }
         }
         .status {
-          padding: 10px 0px 0px 5px;
           .loading {
             width: 24px !important;
             height: 24px !important;

@@ -3,9 +3,9 @@
   "version": "0.3.0",
   "private": true,
   "dependencies": {
-    "aws-sdk": "^2.713.0",
     "axios": "^0.19.2",
     "bootstrap": "^4.5.0",
+    "js-file-downloader": "^1.1.10",
     "moment": "^2.27.0",
     "node-sass": "^4.14.1",
     "prop-types": "^15.7.2",
@@ -26,8 +26,7 @@
     "redux": "^4.0.5",
     "redux-thunk": "^2.3.0",
     "semantic-ui-css": "^2.4.1",
-    "semantic-ui-react": "^0.87.3",
-    "uuid": "^8.2.0"
+    "semantic-ui-react": "^0.87.3"
   },
   "scripts": {
     "start": "react-scripts start",
