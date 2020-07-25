@@ -492,6 +492,9 @@
           width: 16px;
           align-self: center;
         }
+        svg {
+          align-self: center;
+        }
       }
       .text-box {
         width: calc(100% - 56px);
@@ -516,7 +519,7 @@
           background-color: rgba(0, 0, 0, 0.52) !important;
           color: #fff !important;
           font-size: 10px;
-          width: 100% !important;
+          width: 150px !important;
           height: 25px !important;
           text-align: center;
           border: none !important;
@@ -589,7 +592,7 @@
         min-width: 138px;
         padding: 13px 0;
         img {
-          width: 100px;
+          width: 80px;
         }
       }
     }
@@ -620,7 +623,7 @@
       .nav-brand {
         padding: inherit;
         img {
-          width: 100%;
+          width: 100px;
         }
       }
     }
@@ -642,6 +645,14 @@
     }
   }
   @media (min-width: 768px) {
+    .navbar {
+      .nav-brand {
+        padding: inherit;
+        img {
+          width: 110px;
+        }
+      }
+    }
     .layout-content {
       &.quick,
       &.folder,

@@ -156,14 +156,18 @@ export const Drive = () => {
     (e) => {
       setOrder(!order_desc);
       let ordered_files = [];
+      let ordered_folders = [];
       if (order_desc) {
         ordered_files = files.sort((a, b) => a.name.localeCompare(b.name));
+        ordered_folders = folders.sort((a, b) => a.name.localeCompare(b.name));
       } else {
         ordered_files = files.sort((a, b) => b.name.localeCompare(a.name));
+        ordered_folders = folders.sort((a, b) => b.name.localeCompare(a.name));
       }
       setFiles(ordered_files);
+      setFolders(ordered_folders);
     },
-    [order_desc, files]
+    [order_desc, files, folders]
   );
 
   const handleDropdown = (type) => {
@@ -187,6 +191,11 @@ export const Drive = () => {
     if (data.foo === "download") {
       if (selected_file) {
         new Downloader({ url: selected_file.path })
+          .then((res) => console.log(res))
+          .catch((e) => console.warn(e));
+      }
+      if (quick_file) {
+        new Downloader({ url: quick_file.path })
           .then((res) => console.log(res))
           .catch((e) => console.warn(e));
       }
@@ -282,23 +291,41 @@ export const Drive = () => {
         if (isMobileOnly) {
           const cur = e.target.id.split(" ")[2];
           const type = e.target.id.split(" ")[1];
+          const access = e.target.id.split(" ")[3];
           if (cur !== "0") {
             if (type === "file") {
               setSelectedFolder({});
-              const file = files.find((file) => file.id === parseInt(cur));
-              setSelectedFile(file);
-              const file_path = file.path;
-              var a = document.createElement("A");
-              a.href = file_path;
-              a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+              if (access === "detail") {
+                const file = files.find((file) => file.id === parseInt(cur));
+                setSelectedFile(file);
+                setQuickFile({});
+                new Downloader({
+                  url: file.path,
+                  mobileDisabled: false,
+                  forceDesktopMode: true,
+                })
+                  .then((res) => console.log(res))
+                  .catch((e) => console.warn(e));
+              } else {
+                const file = quick_files.find(
+                  (file) => file.id === parseInt(cur)
+                );
+                setQuickFile(file);
+                setSelectedFile({});
+                new Downloader({
+                  url: file.path,
+                  mobileDisabled: false,
+                  forceDesktopMode: true,
+                })
+                  .then((res) => console.log(res))
+                  .catch((e) => console.warn(e));
+              }
             }
           } else {
             setContextTrigger(true);
             setSelectedFile({});
             setSelectedFolder({});
+            setQuickFile({});
           }
         } else {
           setContextTrigger(true);
@@ -322,6 +349,7 @@ export const Drive = () => {
             }
           } else {
             setSelectedFile({});
+            setQuickFile({});
             const folder = folders.find(
               (folder) => folder.id === parseInt(cur)
             );
@@ -820,6 +848,28 @@ export const Drive = () => {
                         ))}
                       {!is_gridType && (
                         <div className="list-group">
+                          {folders.map((item, i) => (
+                            <animated.div
+                              {...bind()}
+                              className={
+                                selected_folder &&
+                                item.id === selected_folder.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              id={"guesture folder " + item.id}
+                              key={i}
+                            >
+                              <ListView
+                                owner=""
+                                last_modified={item.modified_date}
+                                type="folder"
+                                name={item.name}
+                                size=""
+                                id={item.id}
+                              />
+                            </animated.div>
+                          ))}
                           {files.map((item, i) => (
                             <animated.div
                               {...bind()}
@@ -854,22 +904,25 @@ export const Drive = () => {
                         <h2>Folders</h2>
                       </div>
                       <div className="main-content" id="folder-view">
-                        {is_gridType &&
-                          folders.map((item, i) => (
-                            <animated.div
-                              {...bind()}
-                              className={
-                                selected_folder &&
-                                item.id === selected_folder.id
-                                  ? "guesture active"
-                                  : "guesture"
-                              }
-                              id={"guesture folder " + item.id}
-                              key={i}
-                            >
-                              <FolderView name={item.name} id={item.id} />
-                            </animated.div>
-                          ))}
+                        {is_gridType && (
+                          <div className="list-group">
+                            {folders.map((item, i) => (
+                              <animated.div
+                                {...bind()}
+                                className={
+                                  selected_folder &&
+                                  item.id === selected_folder.id
+                                    ? "guesture active"
+                                    : "guesture"
+                                }
+                                id={"guesture folder " + item.id}
+                                key={i}
+                              >
+                                <FolderView name={item.name} id={item.id} />
+                              </animated.div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -931,20 +984,23 @@ export const Drive = () => {
                             />
                           </div>
                         ))}
-                      {!is_gridType &&
-                        quick_files.map((item, i) => (
-                          <div className="guesture">
-                            <ListView
-                              key={i}
-                              owner=""
-                              last_modified={item.modified_date}
-                              type={item.content_type}
-                              name={item.name}
-                              size={item.size}
-                              id={item.id}
-                            />
-                          </div>
-                        ))}
+                      {!is_gridType && (
+                        <div className="list-group">
+                          {quick_files.map((item, i) => (
+                            <div className="guesture">
+                              <ListView
+                                key={i}
+                                owner=""
+                                last_modified={item.modified_date}
+                                type={item.content_type}
+                                name={item.name}
+                                size={item.size}
+                                id={item.id}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

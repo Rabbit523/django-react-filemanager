@@ -78,16 +78,38 @@ export const ListView = (props) => {
     return Math.round(bytes / Math.pow(1024, i), 2) + " " + sizes[i];
   };
 
+  const dateFormat = (date) => {
+    return moment(date).format("MMM DD, YYYY");
+  };
+
   return (
     <div className="list-view" id={"live-view file " + props.id}>
       <div className="td-name" id={"td-name file " + props.id}>
         <div className="icon-box" id={"icon-box file " + props.id}>
-          <img
-            src={matchImageResource16(props)}
-            alt={props.name}
-            className="icon"
-            id={"icon file " + props.id}
-          />
+          {props.type !== "folder" && (
+            <img
+              src={matchImageResource16(props)}
+              alt={props.name}
+              className="icon"
+              id={"icon file " + props.id}
+            />
+          )}
+          {props.type === "folder" && (
+            <svg
+              x="0px"
+              y="0px"
+              focusable="false"
+              viewBox="0 0 16 16"
+              height="16px"
+              width="16px"
+              fill="#5f6368"
+            >
+              <g>
+                <path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"></path>
+                <path d="M0 0h16v16H0z" fill="none"></path>
+              </g>
+            </svg>
+          )}
         </div>
         <div className="text-box" id={"text-box file " + props.id}>
           <Popup
@@ -108,7 +130,9 @@ export const ListView = (props) => {
         <span>{props.owner ? props.owner : "me"}</span>
       </div>
       <div className="td-modified" id={"td-modified file " + props.id}>
-        <span>{props.last_modified ? props.last_modified : cur_date}</span>
+        <span>
+          {props.last_modified ? dateFormat(props.last_modified) : cur_date}
+        </span>
       </div>
       <div className="td-size" id={"td-size file " + props.id}>
         <span>{props.size ? bytesToSize(file_size) : "_"}</span>

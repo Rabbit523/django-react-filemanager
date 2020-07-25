@@ -38,7 +38,7 @@ export const matchImageResource16 = (props) => {
     : props.type.includes("exe")
     ? imageGroup16.exe
     : props.type.includes("octet-stream")
-    ? imageGroup128.file
+    ? imageGroup16.file
     : imageGroup16.file;
 };
 

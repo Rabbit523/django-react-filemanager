@@ -160,13 +160,13 @@ export const Directory = (props) => {
             if (type === "file") {
               const file = files.find((file) => file.id === parseInt(cur));
               setSelectedFile(file);
-              const file_path = file.path;
-              var a = document.createElement("A");
-              a.href = file_path;
-              a.download = file_path.substr(file_path.lastIndexOf("/") + 1);
-              document.body.appendChild(a);
-              a.click();
-              document.body.removeChild(a);
+              new Downloader({
+                url: file.path,
+                mobileDisabled: false,
+                forceDesktopMode: true,
+              })
+                .then((res) => console.log(res))
+                .catch((e) => console.warn(e));
             }
           } else {
             setSelectedFile({});
