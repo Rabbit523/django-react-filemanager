@@ -471,10 +471,9 @@ export const Directory = (props) => {
   const dateFormat = (date) => {
     return moment(date).format("MMM DD, YYYY");
   };
-  
+
   useEventListener("mousedown", eventContextHandler);
 
-  console.log("trigger: ", is_triggerable);
   return (
     <Layout>
       {is_page_loaded ? (

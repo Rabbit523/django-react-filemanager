@@ -52,7 +52,7 @@ export const Drive = (props) => {
   const [is_minimized, setMinimize] = useState(false);
   const [is_uploaded, setUploaded] = useState(false);
   const [is_context, setContext] = useState(true);
-  const [is_triggerable, setContextTrigger] = useState(false);
+  const [is_triggerable, setContextTrigger] = useState(true);
   const [is_gridType, setViewType] = useState(true);
   const [is_mobilePopup, setMobilePopup] = useState(false);
   const [is_mobileSide, setMobileSide] = useState(false);
@@ -463,7 +463,7 @@ export const Drive = (props) => {
   const dateFormat = (date) => {
     return moment(date).format("MMM DD, YYYY");
   };
-  
+
   useEventListener("mousedown", eventContextHandler);
 
   return (
