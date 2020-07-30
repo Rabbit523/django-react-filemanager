@@ -27,76 +27,74 @@ const Signup = (props) => {
 
   return (
     <Layout>
-      <Grid
-        textAlign="center"
-        style={{ height: "100vh" }}
-        verticalAlign="middle"
-      >
-        <Grid.Column style={{ maxWidth: 450 }}>
-          <Header as="h2" color="teal" textAlign="center">
-            Signup to your account
-          </Header>
-          {error && <p>{props.error.message}</p>}
+      <div className="login-page">
+        <Grid textAlign="center" verticalAlign="middle">
+          <Grid.Column className="login">
+            <Header as="h2" color="teal" textAlign="center">
+              Signup to your account
+            </Header>
+            {error && <p>{props.error.message}</p>}
 
-          <React.Fragment>
-            <Form size="large" onSubmit={handleSubmit}>
-              <Segment stacked>
-                <Form.Input
-                  onChange={handleChange}
-                  value={user.username}
-                  name="username"
-                  fluid
-                  icon="user"
-                  iconPosition="left"
-                  placeholder="Username"
-                />
-                <Form.Input
-                  onChange={handleChange}
-                  value={user.email}
-                  name="email"
-                  fluid
-                  icon="mail"
-                  iconPosition="left"
-                  placeholder="E-mail address"
-                />
-                <Form.Input
-                  onChange={handleChange}
-                  fluid
-                  value={user.password1}
-                  name="password1"
-                  icon="lock"
-                  iconPosition="left"
-                  placeholder="Password"
-                  type="password"
-                />
-                <Form.Input
-                  onChange={handleChange}
-                  fluid
-                  value={user.password2}
-                  name="password2"
-                  icon="lock"
-                  iconPosition="left"
-                  placeholder="Confirm password"
-                  type="password"
-                />
+            <React.Fragment>
+              <Form size="large" onSubmit={handleSubmit}>
+                <Segment stacked>
+                  <Form.Input
+                    onChange={handleChange}
+                    value={user.username}
+                    name="username"
+                    fluid
+                    icon="user"
+                    iconPosition="left"
+                    placeholder="Username"
+                  />
+                  <Form.Input
+                    onChange={handleChange}
+                    value={user.email}
+                    name="email"
+                    fluid
+                    icon="mail"
+                    iconPosition="left"
+                    placeholder="E-mail address"
+                  />
+                  <Form.Input
+                    onChange={handleChange}
+                    fluid
+                    value={user.password1}
+                    name="password1"
+                    icon="lock"
+                    iconPosition="left"
+                    placeholder="Password"
+                    type="password"
+                  />
+                  <Form.Input
+                    onChange={handleChange}
+                    fluid
+                    value={user.password2}
+                    name="password2"
+                    icon="lock"
+                    iconPosition="left"
+                    placeholder="Confirm password"
+                    type="password"
+                  />
 
-                <Button
-                  color="teal"
-                  fluid
-                  size="large"
-                  loading={loading}
-                  disabled={loading}
-                >
-                  Signup
-                </Button>
-              </Segment>
-            </Form>
-            <Message>
-              Already have an account? <NavLink to="/login">Login</NavLink>
-            </Message>
-          </React.Fragment>
-        </Grid.Column>
-      </Grid>
+                  <Button
+                    color="teal"
+                    fluid
+                    size="large"
+                    loading={loading}
+                    disabled={loading}
+                  >
+                    Signup
+                  </Button>
+                </Segment>
+              </Form>
+              <Message>
+                Already have an account? <NavLink to="/login">Login</NavLink>
+              </Message>
+            </React.Fragment>
+          </Grid.Column>
+        </Grid>
+      </div>
     </Layout>
   );
 };

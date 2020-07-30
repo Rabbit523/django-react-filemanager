@@ -127,9 +127,26 @@ class FolderUploadView(APIView):
 
     def post(self, request, *args, **kwargs):
         files = dict((request.data).lists())['file']
-        directory = request.data['directory']
         token = request.data['token']
         user = Token.objects.get(key=token).user
+        parent_id = int(request.data['parent_id'])
+
+        dir_arr = list()
+        dir_arr.append(request.data['directory'])
+        while parent_id != 0:
+            instance = Folder.objects.filter(
+                user=user).filter(id=parent_id).first()
+            temp = model_to_dict(instance)
+            parent_id = temp['parent']
+            dir_arr.append(temp['name'])
+
+        length = len(dir_arr)
+        directory = ""
+        for i in range(length - 1, -1, -1):
+            directory += dir_arr[i]
+            if i != 0:
+                directory += '/'
+
         flag = 1
         res_json = None
         for file in files:
@@ -147,8 +164,8 @@ class FolderUploadView(APIView):
                 )
             else:
                 flag = 0
-        if flag == 1:
-            folder_instance = Folder.objects.create(name=directory, user=user)
+            folder_instance = Folder.objects.create(
+                name=request.data['directory'], user=user, parent=request.data['parent_id'])
             res_json = model_to_dict(folder_instance)
             return Response(res_json, status=status.HTTP_200_OK)
         else:
@@ -174,6 +191,9 @@ class FileByDirectoryGetView(APIView):
 
     def post(self, request, *args, **kwargs):
         directory = request.data['directory']
+        if directory[-1] == "/":
+            directory = directory.rstrip('/')
+
         token = request.data['token']
         user = Token.objects.get(key=token).user
 

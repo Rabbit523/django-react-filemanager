@@ -51,11 +51,12 @@ export const uploadFiles = (formData) => {
   });
 };
 
-export const createFolder = (name) => {
+export const createFolder = (name, parent_id) => {
   return new Promise((resolve, reject) => {
     axios
       .post(`${PROD_BASE_URL}/api/create/`, {
         name,
+        parent_id,
         token: localStorage.getItem("token"),
       })
       .then((res) => {
@@ -68,11 +69,28 @@ export const createFolder = (name) => {
   });
 };
 
-export const getFolders = () => {
+export const getAllFolders = () => {
+  return new Promise((resolve, reject) => {
+    axios
+      .post(`${PROD_BASE_URL}/api/get-all/`, {
+        token: localStorage.getItem("token"),
+      })
+      .then((res) => {
+        resolve(res.data);
+      })
+      .catch((err) => {
+        console.warn(err);
+        reject(err);
+      });
+  });
+};
+
+export const getFolders = (parent_id) => {
   return new Promise((resolve, reject) => {
     axios
       .post(`${PROD_BASE_URL}/api/get/`, {
         token: localStorage.getItem("token"),
+        parent_id,
       })
       .then((res) => {
         resolve(res.data);

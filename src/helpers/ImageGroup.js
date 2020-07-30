@@ -7,10 +7,13 @@ export const imageGroup16 = {
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_word_x16.png",
   doc_other:
     "https://drive-thirdparty.googleusercontent.com/16/type/application/vnd.google-apps.document",
+  google_doc: "https://image.flaticon.com/icons/svg/2965/2965335.svg",
   spreadsheet:
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_spreadsheet_x16.png",
+  google_sheet: "https://image.flaticon.com/icons/svg/281/281761.svg",
   powerpoint:
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_powerpoint_x16.png",
+  google_slide: "https://image.flaticon.com/icons/svg/281/281762.svg",
   pdf:
     "https://www.gstatic.com/docs/doclist/images/mediatype/icon_1_pdf_x16.png",
   pdf_other:

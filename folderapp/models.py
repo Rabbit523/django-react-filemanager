@@ -27,9 +27,10 @@ User = get_user_model()
 class Folders(models.Model):
     name = models.CharField(max_length=255)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
+    parent = models.IntegerField(default=0, null=True)
     created_date = models.DateTimeField(default=timezone.now)
     modified_date = models.DateTimeField(default=timezone.now)
 
 
 def __str__(self):
-    return self.file.name
+    return self.name

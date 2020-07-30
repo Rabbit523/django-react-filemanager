@@ -2,12 +2,13 @@ import React from "react";
 import { withRouter } from "react-router-dom";
 import Popup from "reactjs-popup";
 import moment from "moment";
+import { isMobileOnly } from "react-device-detect";
 import {
   matchImageResource16,
   matchImageResource128,
 } from "../helpers/MatchImageResource";
 
-export const FileView = (props) => {
+const FileView = (props) => {
   const extra_id = props.access ? props.id + " " + props.access : props.id;
   const image_style = {
     backgroundImage: `url(${props.path})`,
@@ -62,15 +63,65 @@ export const FileView = (props) => {
             <div>{props.name}</div>
           </Popup>
         </div>
+        {isMobileOnly && props.id !== 0 && (
+          <div
+            className="info-box"
+            id={"info-box file " + props.id + " detail"}
+            onClick={() => props.onHandleSide()}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20pt"
+              viewBox="0 0 20 20"
+              version="1.1"
+              height="25pt"
+            >
+              <g id="surface1">
+                <path
+                  style={{
+                    stroke: "none",
+                    fillRule: "nonzero",
+                    fill: "#757575",
+                    fillOpacity: 1,
+                  }}
+                  d="M 12 7.5 C 12 8.605469 11.105469 9.5 10 9.5 C 8.894531 9.5 8 8.605469 8 7.5 C 8 6.394531 8.894531 5.5 10 5.5 C 11.105469 5.5 12 6.394531 12 7.5 Z M 12 7.5 "
+                ></path>
+                <path
+                  style={{
+                    stroke: "none",
+                    fillRule: "nonzero",
+                    fill: "#757575",
+                    fillOpacity: 1,
+                  }}
+                  d="M 12 12.5 C 12 13.605469 11.105469 14.5 10 14.5 C 8.894531 14.5 8 13.605469 8 12.5 C 8 11.394531 8.894531 10.5 10 10.5 C 11.105469 10.5 12 11.394531 12 12.5 Z M 12 12.5 "
+                ></path>
+                <path
+                  style={{
+                    stroke: "none",
+                    fillRule: "nonzero",
+                    fill: "#757575",
+                    fillOpacity: 1,
+                  }}
+                  d="M 12 17.5 C 12 18.605469 11.105469 19.5 10 19.5 C 8.894531 19.5 8 18.605469 8 17.5 C 8 16.394531 8.894531 15.5 10 15.5 C 11.105469 15.5 12 16.394531 12 17.5 Z M 12 17.5 "
+                ></path>
+              </g>
+            </svg>
+          </div>
+        )}
       </div>
     </div>
   );
 };
+export const FileViews = withRouter(FileView);
 
-export const ListView = (props) => {
+const ListView = (props) => {
   const cur_date = moment(new Date()).format("MMM DD, YYYY");
   const file_size = props.size;
-
+  const extra_type_id =
+    props.type === "folder" ? " folder " + props.id : " file " + props.id;
+  const extra_id = props.access
+    ? extra_type_id + " " + props.access
+    : extra_type_id;
   const bytesToSize = (bytes) => {
     var sizes = ["Bytes", "KB", "MB", "GB", "TB"];
     if (bytes === 0) return "0 Byte";
@@ -83,15 +134,29 @@ export const ListView = (props) => {
   };
 
   return (
-    <div className="list-view" id={"live-view file " + props.id}>
-      <div className="td-name" id={"td-name file " + props.id}>
-        <div className="icon-box" id={"icon-box file " + props.id}>
+    <div
+      className="list-view"
+      id={"list-view" + extra_id}
+      onDoubleClick={() =>
+        props.type === "folder" &&
+        !isMobileOnly &&
+        props.history.push({
+          pathname:
+            props.location.pathname[props.location.pathname.length - 1] !== "/"
+              ? `${props.location.pathname}/${props.name}`
+              : `${props.location.pathname}${props.name}`,
+          state: { name: props.name, id: props.id },
+        })
+      }
+    >
+      <div className="td-name" id={"td-name" + extra_id}>
+        <div className="icon-box" id={"icon-box" + extra_id}>
           {props.type !== "folder" && (
             <img
               src={matchImageResource16(props)}
               alt={props.name}
               className="icon"
-              id={"icon file " + props.id}
+              id={"icon" + extra_id}
             />
           )}
           {props.type === "folder" && (
@@ -111,10 +176,10 @@ export const ListView = (props) => {
             </svg>
           )}
         </div>
-        <div className="text-box" id={"text-box file " + props.id}>
+        <div className="text-box" id={"text-box" + extra_id}>
           <Popup
             trigger={
-              <button className="tooltip" id={"tooltip file " + props.id}>
+              <button className="tooltip" id={"tooltip" + extra_id}>
                 {props.name}
               </button>
             }
@@ -126,32 +191,89 @@ export const ListView = (props) => {
           </Popup>
         </div>
       </div>
-      <div className="td-owner" id={"td-owner file " + props.id}>
-        <span>{props.owner ? props.owner : "me"}</span>
-      </div>
-      <div className="td-modified" id={"td-modified file " + props.id}>
-        <span>
-          {props.last_modified ? dateFormat(props.last_modified) : cur_date}
-        </span>
-      </div>
-      <div className="td-size" id={"td-size file " + props.id}>
-        <span>{props.size ? bytesToSize(file_size) : "_"}</span>
-      </div>
+      {isMobileOnly && props.id !== 0 && (
+        <div
+          className="info-box"
+          id={"info-box" + extra_type_id + " detail"}
+          onClick={() => props.onHandleSide()}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20pt"
+            viewBox="0 0 20 20"
+            version="1.1"
+            height="25pt"
+          >
+            <g id="surface1">
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 7.5 C 12 8.605469 11.105469 9.5 10 9.5 C 8.894531 9.5 8 8.605469 8 7.5 C 8 6.394531 8.894531 5.5 10 5.5 C 11.105469 5.5 12 6.394531 12 7.5 Z M 12 7.5 "
+              ></path>
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 12.5 C 12 13.605469 11.105469 14.5 10 14.5 C 8.894531 14.5 8 13.605469 8 12.5 C 8 11.394531 8.894531 10.5 10 10.5 C 11.105469 10.5 12 11.394531 12 12.5 Z M 12 12.5 "
+              ></path>
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 17.5 C 12 18.605469 11.105469 19.5 10 19.5 C 8.894531 19.5 8 18.605469 8 17.5 C 8 16.394531 8.894531 15.5 10 15.5 C 11.105469 15.5 12 16.394531 12 17.5 Z M 12 17.5 "
+              ></path>
+            </g>
+          </svg>
+        </div>
+      )}
+      {!isMobileOnly && (
+        <div className="td-owner" id={"td-owner" + extra_id}>
+          <span>{props.owner ? props.owner : "me"}</span>
+        </div>
+      )}
+      {!isMobileOnly && (
+        <div className="td-modified" id={"td-modified" + extra_id}>
+          <span>
+            {props.last_modified ? dateFormat(props.last_modified) : cur_date}
+          </span>
+        </div>
+      )}
+      {!isMobileOnly && (
+        <div className="td-size" id={"td-size" + extra_id}>
+          <span>{props.size ? bytesToSize(file_size) : "_"}</span>
+        </div>
+      )}
     </div>
   );
 };
+export const ListViews = withRouter(ListView);
 
-const FolderView = (props) => {
+const FolderViews = (props) => {
   return (
     <div
       className="folder-view"
       id={"folder-view folder " + props.id}
-      onDoubleClick={() =>
-        props.history.push({
-          pathname: `/drive/${props.name}`,
-          state: { name: props.name },
-        })
-      }
+      onDoubleClick={() => {
+        !isMobileOnly &&
+          props.history.push({
+            pathname:
+              props.location.pathname[props.location.pathname.length - 1] !==
+              "/"
+                ? `${props.location.pathname}/${props.name}`
+                : `${props.location.pathname}${props.name}`,
+            state: { name: props.name, id: props.id },
+          });
+      }}
     >
       <div className="icon-box" id={"icon-box folder " + props.id}>
         <svg
@@ -184,8 +306,53 @@ const FolderView = (props) => {
           <div>{props.name}</div>
         </Popup>
       </div>
+      {isMobileOnly && props.id !== 0 && (
+        <div
+          className="info-box"
+          id={"info-box folder " + props.id}
+          onClick={() => props.onHandleSide()}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20pt"
+            viewBox="0 0 20 20"
+            version="1.1"
+            height="25pt"
+          >
+            <g id="surface1">
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 7.5 C 12 8.605469 11.105469 9.5 10 9.5 C 8.894531 9.5 8 8.605469 8 7.5 C 8 6.394531 8.894531 5.5 10 5.5 C 11.105469 5.5 12 6.394531 12 7.5 Z M 12 7.5 "
+              ></path>
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 12.5 C 12 13.605469 11.105469 14.5 10 14.5 C 8.894531 14.5 8 13.605469 8 12.5 C 8 11.394531 8.894531 10.5 10 10.5 C 11.105469 10.5 12 11.394531 12 12.5 Z M 12 12.5 "
+              ></path>
+              <path
+                style={{
+                  stroke: "none",
+                  fillRule: "nonzero",
+                  fill: "#757575",
+                  fillOpacity: 1,
+                }}
+                d="M 12 17.5 C 12 18.605469 11.105469 19.5 10 19.5 C 8.894531 19.5 8 18.605469 8 17.5 C 8 16.394531 8.894531 15.5 10 15.5 C 11.105469 15.5 12 16.394531 12 17.5 Z M 12 17.5 "
+              ></path>
+            </g>
+          </svg>
+        </div>
+      )}
     </div>
   );
 };
 
-export default withRouter(FolderView);
+export default withRouter(FolderViews);

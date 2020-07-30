@@ -8,9 +8,9 @@ import {
 
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
+import { Home } from "./pages/Home";
 import { Drive } from "./pages/Drive";
 import { Directory } from "./pages/Directory";
-import { Home } from "./pages/Home";
 
 export const PublicRoute = () => (
   <Router>
