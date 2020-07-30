@@ -1047,108 +1047,111 @@ export const Directory = (props) => {
                     <Button
                       className="mobile-btn-add"
                       onClick={onHandleMobilePopupOpen}
-                    />
+                    ><div className="icon-google"></div></Button>
                   )}
                 </div>
               </div>
               {isMobileOnly && (
-                <TransitionablePortal
-                  open={is_mobilePopup}
-                  onClose={onHandleMobilePopupClose}
-                >
-                  <Segment className="mobile-popup">
-                    <div className="header">
-                      <h3>Create new</h3>
-                    </div>
-                    <div className="body">
-                      <div className="item-row">
-                        <div
-                          className="item"
-                          onClick={() =>
-                            onHandleMobilePopupItem("create_folder")
-                          }
-                        >
-                          <div className="icon-box">
-                            <Icon name="folder" />
+                <React.Fragment>
+                  {is_mobilePopup && <div className="mobile-side-overlay"></div>}
+                  <TransitionablePortal
+                    open={is_mobilePopup}
+                    onClose={onHandleMobilePopupClose}
+                  >
+                    <Segment className="mobile-popup">
+                      <div className="header">
+                        <h3>Create new</h3>
+                      </div>
+                      <div className="body">
+                        <div className="item-row">
+                          <div
+                            className="item"
+                            onClick={() =>
+                              onHandleMobilePopupItem("create_folder")
+                            }
+                          >
+                            <div className="icon-box">
+                              <Icon name="folder" />
+                            </div>
+                            <div className="name">
+                              <Label>Folder</Label>
+                            </div>
                           </div>
-                          <div className="name">
-                            <Label>Folder</Label>
+                          <div
+                            className="item"
+                            onClick={() => onHandleMobilePopupItem("upload")}
+                          >
+                            <div className="icon-box">
+                              <Icon name="upload" />
+                            </div>
+                            <div className="name">
+                              <Label>Upload</Label>
+                            </div>
+                          </div>
+                          <div
+                            className="item"
+                            onClick={() => onHandleMobilePopupItem("scan")}
+                          >
+                            <div className="icon-box">
+                              <Icon name="camera" />
+                            </div>
+                            <div className="name">
+                              <Label>Scan</Label>
+                            </div>
                           </div>
                         </div>
-                        <div
-                          className="item"
-                          onClick={() => onHandleMobilePopupItem("upload")}
-                        >
-                          <div className="icon-box">
-                            <Icon name="upload" />
+                        <div className="item-row">
+                          <div
+                            className="item"
+                            onClick={() => onHandleMobilePopupItem("google_doc")}
+                          >
+                            <div className="icon-box">
+                              <img
+                                src={imageGroup16.google_doc}
+                                alt="google_doc"
+                              />
+                            </div>
+                            <div className="name">
+                              <Label>Google Docs</Label>
+                            </div>
                           </div>
-                          <div className="name">
-                            <Label>Upload</Label>
+                          <div
+                            className="item"
+                            onClick={() =>
+                              onHandleMobilePopupItem("google_sheet")
+                            }
+                          >
+                            <div className="icon-box">
+                              <img
+                                src={imageGroup16.google_sheet}
+                                alt="google_sheet"
+                              />
+                            </div>
+                            <div className="name">
+                              <Label>Google Sheets</Label>
+                            </div>
                           </div>
-                        </div>
-                        <div
-                          className="item"
-                          onClick={() => onHandleMobilePopupItem("scan")}
-                        >
-                          <div className="icon-box">
-                            <Icon name="camera" />
-                          </div>
-                          <div className="name">
-                            <Label>Scan</Label>
+                          <div
+                            className="item"
+                            onClick={() =>
+                              onHandleMobilePopupItem("google_slide")
+                            }
+                          >
+                            <div className="icon-box">
+                              <img
+                                src={imageGroup16.google_slide}
+                                alt="google_slide"
+                              />
+                            </div>
+                            <div className="name">
+                              <Label>Google Slides</Label>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div className="item-row">
-                        <div
-                          className="item"
-                          onClick={() => onHandleMobilePopupItem("google_doc")}
-                        >
-                          <div className="icon-box">
-                            <img
-                              src={imageGroup16.google_doc}
-                              alt="google_doc"
-                            />
-                          </div>
-                          <div className="name">
-                            <Label>Google Docs</Label>
-                          </div>
-                        </div>
-                        <div
-                          className="item"
-                          onClick={() =>
-                            onHandleMobilePopupItem("google_sheet")
-                          }
-                        >
-                          <div className="icon-box">
-                            <img
-                              src={imageGroup16.google_sheet}
-                              alt="google_sheet"
-                            />
-                          </div>
-                          <div className="name">
-                            <Label>Google Sheets</Label>
-                          </div>
-                        </div>
-                        <div
-                          className="item"
-                          onClick={() =>
-                            onHandleMobilePopupItem("google_slide")
-                          }
-                        >
-                          <div className="icon-box">
-                            <img
-                              src={imageGroup16.google_slide}
-                              alt="google_slide"
-                            />
-                          </div>
-                          <div className="name">
-                            <Label>Google Slides</Label>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Segment>
-                </TransitionablePortal>
+                    </Segment>
+                  </TransitionablePortal>
+                </React.Fragment>
               )}
               {isMobileOnly && (
                 <React.Fragment>
