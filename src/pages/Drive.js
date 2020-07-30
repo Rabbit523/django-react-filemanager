@@ -454,6 +454,8 @@ export const Drive = (props) => {
             setSelectedFolder(folder);
           }
         }
+      } else {
+        setContextTrigger(true);
       }
     }
   });
@@ -461,6 +463,7 @@ export const Drive = (props) => {
   const dateFormat = (date) => {
     return moment(date).format("MMM DD, YYYY");
   };
+  
   useEventListener("mousedown", eventContextHandler);
 
   return (

@@ -462,6 +462,8 @@ export const Directory = (props) => {
             setSelectedFolder(folder);
           }
         }
+      } else {
+        setContextTrigger(true);
       }
     },
   });
@@ -469,6 +471,7 @@ export const Directory = (props) => {
   const dateFormat = (date) => {
     return moment(date).format("MMM DD, YYYY");
   };
+  
   useEventListener("mousedown", eventContextHandler);
 
   console.log("trigger: ", is_triggerable);
