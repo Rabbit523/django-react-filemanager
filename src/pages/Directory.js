@@ -154,7 +154,7 @@ export const Directory = (props) => {
 
   const eventContextHandler = useCallback(
     (e) => {
-      if (!isMobileOnly) {
+      if (e.button === 2 && !isMobileOnly) {
         if (availableUploadArea.includes(e.target.id)) {
           setContextTrigger(false);
           setContext(true);
@@ -185,6 +185,8 @@ export const Directory = (props) => {
           setSelectedFile({});
           setSelectedFolder({});
         }
+      } else {
+        setContextTrigger(true);
       }
     },
     [is_context, files]

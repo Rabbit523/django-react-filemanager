@@ -119,7 +119,7 @@ export const Drive = (props) => {
 
   const eventContextHandler = useCallback(
     (e) => {
-      if (!isMobileOnly) {
+      if (e.button === 2 && !isMobileOnly) {
         if (availableUploadArea.includes(e.target.id)) {
           setContextTrigger(false);
           setContext(true);
@@ -165,6 +165,8 @@ export const Drive = (props) => {
           setQuickFile({});
           setSelectedFolder({});
         }
+      } else {
+        setContextTrigger(true);
       }
     },
     [is_context, files]
