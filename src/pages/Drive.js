@@ -44,6 +44,7 @@ export const Drive = (props) => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
   const folderRef = useRef();
+  const inputRef = useRef();
 
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
@@ -118,7 +119,7 @@ export const Drive = (props) => {
 
   const eventContextHandler = useCallback(
     (e) => {
-      if (e.button === 2 && !isMobileOnly) {
+      if (!isMobileOnly) {
         if (availableUploadArea.includes(e.target.id)) {
           setContextTrigger(false);
           setContext(true);
@@ -164,8 +165,6 @@ export const Drive = (props) => {
           setQuickFile({});
           setSelectedFolder({});
         }
-      } else {
-        setContextTrigger(true);
       }
     },
     [is_context, files]
@@ -288,6 +287,11 @@ export const Drive = (props) => {
     setMinimize(!is_minimized);
   };
 
+  const afterOpenCreateModal = (e) => {
+    inputRef.current.focus();
+    inputRef.current.select();
+  };
+
   const closeCreateModal = () => {
     setCreatingModal(false);
   };
@@ -303,7 +307,6 @@ export const Drive = (props) => {
   const onHandleFolderTitle = (e) => {
     setFolderTitle(e.target.value);
   };
-
   const onCreateNewFolder = () => {
     createFolder(new_folder_title, 0).then((res) => {
       setCreatingModal(false);
@@ -449,10 +452,8 @@ export const Drive = (props) => {
             setSelectedFolder(folder);
           }
         }
-      } else {
-        setContextTrigger(true);
       }
-    },
+    }
   });
 
   const dateFormat = (date) => {
@@ -677,6 +678,7 @@ export const Drive = (props) => {
           <Modal
             isOpen={is_creatingModal}
             onRequestClose={closeCreateModal}
+            onAfterOpen={afterOpenCreateModal}
             className="create-folder-modal"
             overlayClassName="modal-overlay"
           >
@@ -710,6 +712,7 @@ export const Drive = (props) => {
                 className="input"
                 onChange={onHandleFolderTitle}
                 defaultValue="Untitled folder"
+                ref={inputRef}
               />
             </div>
             <div className="modal-footer">
@@ -1387,7 +1390,7 @@ export const Drive = (props) => {
                 </React.Fragment>
               )}
             </div>
-            <ContextMenu id="context-menu">
+            <ContextMenu id="context-menu" className={is_triggerable ? "context hide" : "context"}>
               {is_context ? (
                 <React.Fragment>
                   <MenuItem data={{ foo: "new_folder" }} onClick={handleClick}>

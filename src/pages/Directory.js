@@ -45,7 +45,8 @@ export const Directory = (props) => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
   const folderRef = useRef();
-
+  const inputRef = useRef();
+  
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
@@ -153,7 +154,7 @@ export const Directory = (props) => {
 
   const eventContextHandler = useCallback(
     (e) => {
-      if (e.button === 2 && !isMobileOnly) {
+      if (!isMobileOnly) {
         if (availableUploadArea.includes(e.target.id)) {
           setContextTrigger(false);
           setContext(true);
@@ -184,8 +185,6 @@ export const Directory = (props) => {
           setSelectedFile({});
           setSelectedFolder({});
         }
-      } else {
-        setContextTrigger(true);
       }
     },
     [is_context, files]
@@ -328,6 +327,11 @@ export const Directory = (props) => {
     setMinimize(!is_minimized);
   };
 
+  const afterOpenCreateModal = (e) => {
+    inputRef.current.focus();
+    inputRef.current.select();
+  };
+  
   const closeCreateModal = () => {
     setCreatingModal(false);
   };
@@ -683,6 +687,7 @@ export const Directory = (props) => {
           <Modal
             isOpen={is_creatingModal}
             onRequestClose={closeCreateModal}
+            onAfterOpen={afterOpenCreateModal}
             className="create-folder-modal"
             overlayClassName="modal-overlay"
           >
@@ -716,6 +721,7 @@ export const Directory = (props) => {
                 className="input"
                 onChange={onHandleFolderTitle}
                 defaultValue="Untitled folder"
+                ref={inputRef}
               />
             </div>
             <div className="modal-footer">
@@ -1269,7 +1275,7 @@ export const Directory = (props) => {
                 </React.Fragment>
               )}
             </div>
-            <ContextMenu id="dir-context">
+            <ContextMenu id="dir-context" className={is_triggerable ? "context hide" : "context"}>
               {is_context ? (
                 <React.Fragment>
                   <MenuItem data={{ foo: "new_folder" }} onClick={handleClick}>

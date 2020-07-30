@@ -79,6 +79,11 @@ body {
         width: 100%;
         height: 100%;
         display: flex;
+        .context {
+          &.hide {
+            display: none;
+          }
+        }
         .sidebar {
           position: relative;
           max-width: 394px;
