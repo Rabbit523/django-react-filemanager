@@ -1044,10 +1044,10 @@ export const Directory = (props) => {
                     </div>
                   )}
                   {isMobileOnly && (
-                    <Button
+                    <a
                       className="mobile-btn-add"
                       onClick={onHandleMobilePopupOpen}
-                    ><div className="icon-google"></div></Button>
+                    />
                   )}
                 </div>
               </div>

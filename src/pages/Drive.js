@@ -1039,10 +1039,10 @@ export const Drive = (props) => {
                       </div>
                     </div>
                     {isMobileOnly && (
-                      <Button
+                      <a
                         className="mobile-btn-add"
                         onClick={onHandleMobilePopupOpen}
-                      ><div className="icon-google"></div></Button>
+                      />
                     )}
                   </div>
                 ) : (
@@ -1163,6 +1163,12 @@ export const Drive = (props) => {
                         )}
                       </div>
                     </div>
+                    {isMobileOnly && (
+                      <a
+                        className="mobile-btn-add"
+                        onClick={onHandleMobilePopupOpen}
+                      />
+                    )}
                   </div>
                 )}
               </div>
