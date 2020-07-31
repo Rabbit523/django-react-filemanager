@@ -7,14 +7,25 @@ import { Provider } from "react-redux";
 import thunk from "redux-thunk";
 
 import authReducer from "./store/reducers/auth";
-
 const composeEnhances = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
 
 const rootReducer = combineReducers({
-  auth: authReducer
+  auth: authReducer,
 });
 
-const store = createStore(rootReducer, composeEnhances(applyMiddleware(thunk)));
+const initialState = {
+  auth: {
+    token: localStorage.getItem("token"),
+    error: null,
+    loading: false,
+  },
+};
+
+const store = createStore(
+  rootReducer,
+  initialState,
+  composeEnhances(applyMiddleware(thunk))
+);
 
 const app = (
   <Provider store={store}>

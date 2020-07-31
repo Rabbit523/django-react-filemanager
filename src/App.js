@@ -1,23 +1,22 @@
 import React, { Component } from "react";
 import { BrowserRouter as Router } from "react-router-dom";
 import { connect } from "react-redux";
-import BaseRouter from "./routes/index";
 import * as actions from "./store/actions/auth";
 import "semantic-ui-css/semantic.min.css";
-import CustomLayout from "./containers/Layout";
+import "bootstrap/dist/css/bootstrap.min.css";
+import 'react-toastify/dist/ReactToastify.css';
 import "./sass/App.scss";
+import { PublicRoute, PrivateRoute } from "./routes";
 
 class App extends Component {
   componentDidMount() {
-    this.props.onTryAutoSignup();
+    this.props.onAuthCheck();
   }
 
   render() {
     return (
       <Router>
-        <CustomLayout {...this.props}>
-          <BaseRouter {...this.props} />
-        </CustomLayout>
+        {this.props.isAuthenticated ? <PrivateRoute /> : <PublicRoute />}
       </Router>
     );
   }
@@ -31,7 +30,7 @@ const mapStateToProps = (state) => {
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    onTryAutoSignup: () => dispatch(actions.authCheckState()),
+    onAuthCheck: () => dispatch(actions.authCheckState()),
   };
 };
 
