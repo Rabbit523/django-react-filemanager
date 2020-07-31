@@ -1,11 +1,13 @@
 import React from "react";
 import { withRouter } from "react-router-dom";
+import ReactLoading from "react-loading";
 import Popup from "reactjs-popup";
 import moment from "moment";
 import { isMobileOnly } from "react-device-detect";
 import {
   matchImageResource16,
   matchImageResource128,
+  getBase64BackgroundImage,
 } from "../helpers/MatchImageResource";
 
 const FileView = (props) => {
@@ -258,7 +260,7 @@ const ListView = (props) => {
 };
 export const ListViews = withRouter(ListView);
 
-const FolderViews = (props) => {
+const FolderView = (props) => {
   return (
     <div
       className="folder-view"
@@ -355,4 +357,55 @@ const FolderViews = (props) => {
   );
 };
 
-export default withRouter(FolderViews);
+export const FolderViews = withRouter(FolderView);
+
+export const UploadViews = (props) => {
+  return (
+    <div className="file-view upload">
+      <div className="upload-overlay">
+        <ReactLoading type="bubbles" color="#fff" className="loading" />
+      </div>
+      {props.file.type.includes("image") ? (
+        <div
+          className="image-view transparent"
+        >
+          <div
+            className="image"
+            style={getBase64BackgroundImage(props.file)}
+          />
+        </div>
+      ) : (
+        <div className="image-view">
+          <img
+            src={matchImageResource128(props.file)}
+            alt={props.file.name}
+            className="icon"
+          />
+        </div>
+      )}
+      <div className="detail-view">
+        <div className="icon-box">
+          <img
+            src={matchImageResource16(props.file)}
+            alt={props.file.name}
+            className="icon"
+          />
+        </div>
+        <div className="text-box">
+          <Popup
+            trigger={
+              <button className="tooltip">
+                {props.file.name}
+              </button>
+            }
+            position="top center"
+            on="hover"
+            arrow={false}
+          >
+            <div>{props.file.name}</div>
+          </Popup>
+        </div>
+      </div>
+    </div>
+  );
+};

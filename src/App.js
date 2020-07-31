@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import * as actions from "./store/actions/auth";
 import "semantic-ui-css/semantic.min.css";
 import "bootstrap/dist/css/bootstrap.min.css";
+import 'react-toastify/dist/ReactToastify.css';
 import "./sass/App.scss";
 import { PublicRoute, PrivateRoute } from "./routes";
 

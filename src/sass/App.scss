@@ -298,6 +298,17 @@ body {
               width: 100%;
               height: 100%;
               position: relative;
+              &.upload {
+                height: auto;
+                .layout-content {
+                  .main-content {
+                    min-height: 150px;
+                    .guesture {
+                      width: 50%;
+                    }
+                  }
+                }
+              }
               .layout-content {
                 .layout-header {
                   font-family: Google Sans, Roboto, RobotoDraft, Helvetica,
@@ -526,6 +537,23 @@ body {
       overflow: hidden;
       height: auto;
       position: relative;
+      &.upload {
+        .upload-overlay {
+          z-index: 1074;
+          background: rgba(0,0,0,.4);
+          position: absolute;
+          top: 0;
+          left: 0;
+          bottom: 0;
+          right: 0;
+          .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+          }
+        }
+      }
       .image-view {
         width: 100%;
         background-position: 0 0, 10px 10px;
@@ -1523,6 +1551,26 @@ body {
             margin: 0;
           }
         }
+      }
+    }
+  }
+  .toast-custom {
+    max-width: 414px;
+    min-height: 44px;
+    .Toastify__close-button {
+      display: none;
+    }
+    .custom-toast-body {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 10px;
+      align-items: center;
+      label {
+        margin: 0;
+      }
+      a {
+        color: #009df7;
+        font-weight: bold;
       }
     }
   }

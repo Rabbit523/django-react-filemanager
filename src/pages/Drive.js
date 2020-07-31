@@ -14,7 +14,7 @@ import {
   Label,
   TransitionablePortal,
 } from "semantic-ui-react";
-import { isMobileOnly } from "react-device-detect";
+import { isMobileOnly, isIOS } from "react-device-detect";
 import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
 import Modal from "react-modal";
@@ -23,6 +23,8 @@ import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
+import { animateScroll as scroll } from "react-scroll";
+import { toast } from 'react-toastify';
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFiles,
@@ -37,15 +39,29 @@ import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import FolderViews, { FileViews, ListViews } from "../containers/Views";
+import { FolderViews, FileViews, ListViews, UploadViews } from "../containers/Views";
 import Layout from "../containers/Layout";
+
+const CustomToast = ({ closeToast, text, type }) => {
+  const onHandleCloseToast = () => {
+    closeToast();
+    scroll.scrollToBottom({containerId: "context-area"});
+  };
+  return (
+    <div className="custom-toast-body">
+      <label>{text}</label>
+      {type !== "download" && <a onClick={onHandleCloseToast}>Locate</a>}
+    </div>
+  )
+}
+toast.configure();
 
 export const Drive = (props) => {
   Modal.setAppElement("#root");
   const fileRef = useRef();
   const folderRef = useRef();
   const inputRef = useRef();
-
+  
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
@@ -240,8 +256,13 @@ export const Drive = (props) => {
     formData.append("directory", null);
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
-    !isMobileOnly && setUploadingModal(true);
+    if(isMobileOnly) {
+      scroll.scrollToTop({containerId: "context-area"});
+    } else {
+      setUploadingModal(true);
+    }
     uploadFiles(formData).then((response) => {
+      isMobileOnly && setUploadingFiles([]);
       let res_arr = [...files];
       response.forEach((file) => {
         res_arr.push(file);
@@ -249,6 +270,16 @@ export const Drive = (props) => {
       setFiles(res_arr);
       setUploaded(true);
       setFileCount(0);
+      if (isMobileOnly) {
+        toast.dark(<CustomToast text="All pending uploads have completed" type="upload"/>, {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom"
+        })
+      }
     });
   };
 
@@ -355,7 +386,14 @@ export const Drive = (props) => {
           mobileDisabled: false,
           forceDesktopMode: true,
         })
-          .then((res) => console.log(res))
+          .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
+            position: toast.POSITION.BOTTOM_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom"
+          }))
           .catch((e) => console.warn(e));
       }
     }
@@ -385,7 +423,14 @@ export const Drive = (props) => {
                     mobileDisabled: false,
                     forceDesktopMode: true,
                   })
-                    .then((res) => console.log(res))
+                    .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
+                      position: toast.POSITION.BOTTOM_CENTER,
+                      hideProgressBar: true,
+                      closeOnClick: false,
+                      pauseOnHover: true,
+                      draggable: true,
+                      className: "toast-custom"
+                    }))
                     .catch((e) => console.warn(e));
                 }
               } else {
@@ -399,7 +444,14 @@ export const Drive = (props) => {
                   mobileDisabled: false,
                   forceDesktopMode: true,
                 })
-                  .then((res) => console.log(res))
+                  .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
+                    position: toast.POSITION.BOTTOM_CENTER,
+                    hideProgressBar: true,
+                    closeOnClick: false,
+                    pauseOnHover: true,
+                    draggable: true,
+                    className: "toast-custom"
+                  }))
                   .catch((e) => console.warn(e));
               }
             } else {
@@ -457,7 +509,7 @@ export const Drive = (props) => {
       } else {
         setContextTrigger(true);
       }
-    }
+    },
   });
 
   const dateFormat = (date) => {
@@ -845,7 +897,26 @@ export const Drive = (props) => {
                   </button>
                 </div>
               </div>
-              <div className="context-area">
+              <div className="context-area" id="context-area">
+                {isMobileOnly && uploading_files.length > 0 && (
+                  <div className="layout-view upload">
+                    <div className="layout-content">
+                      <div className="layout-header">
+                        <h2>Uploads</h2>
+                      </div>
+                      <div className="main-content">
+                          {uploading_files.map((item, i) => (
+                            <div className="guesture">
+                              <UploadViews
+                                key={i}
+                                file={item}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {files.length > 0 ? (
                   <div className="layout-view">
                     <div className="layout-content quick">
@@ -1177,7 +1248,9 @@ export const Drive = (props) => {
               </div>
               {isMobileOnly && (
                 <React.Fragment>
-                  {is_mobilePopup && <div className="mobile-side-overlay"></div>}
+                  {is_mobilePopup && (
+                    <div className="mobile-side-overlay"></div>
+                  )}
                   <TransitionablePortal
                     open={is_mobilePopup}
                     onClose={onHandleMobilePopupClose}
@@ -1227,7 +1300,9 @@ export const Drive = (props) => {
                         <div className="item-row">
                           <div
                             className="item"
-                            onClick={() => onHandleMobilePopupItem("google_doc")}
+                            onClick={() =>
+                              onHandleMobilePopupItem("google_doc")
+                            }
                           >
                             <div className="icon-box">
                               <img
@@ -1378,7 +1453,7 @@ export const Drive = (props) => {
                         </div>
                         {selected_file.name && (
                           <div className="tools">
-                            <div
+                            {!isIOS && <div
                               className="item"
                               onClick={() => onHandleMobileSideItem("download")}
                             >
@@ -1386,7 +1461,7 @@ export const Drive = (props) => {
                                 <Icon name="download" />
                               </div>
                               <label>Download</label>
-                            </div>
+                            </div>}
                             <div
                               className="item"
                               onClick={() => onHandleMobileSideItem("trash")}
@@ -1404,7 +1479,10 @@ export const Drive = (props) => {
                 </React.Fragment>
               )}
             </div>
-            <ContextMenu id="context-menu" className={is_triggerable ? "context hide" : "context"}>
+            <ContextMenu
+              id="context-menu"
+              className={is_triggerable ? "context hide" : "context"}
+            >
               {is_context ? (
                 <React.Fragment>
                   <MenuItem data={{ foo: "new_folder" }} onClick={handleClick}>

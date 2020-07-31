@@ -18,7 +18,6 @@ class CustomLayout extends React.Component {
             className="nav-brand"
           >
             <img src={"/static/logo.png"} alt="logo"></img>
-            <span>Drive</span>
           </Menu.Item>
           <div className="end-nav">
             {authenticated ? (

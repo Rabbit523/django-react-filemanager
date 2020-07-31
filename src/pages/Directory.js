@@ -23,6 +23,8 @@ import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
+import { animateScroll as scroll } from "react-scroll";
+import { toast } from 'react-toastify';
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFilesByDirectory,
@@ -38,8 +40,22 @@ import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import FolderViews, { FileViews, ListViews } from "../containers/Views";
+import { FolderViews, FileViews, ListViews, UploadViews } from "../containers/Views";
 import Layout from "../containers/Layout";
+
+const CustomToast = ({ closeToast, text, type }) => {
+  const onHandleCloseToast = () => {
+    closeToast();
+    scroll.scrollToBottom({containerId: "context-area"});
+  };
+  return (
+    <div className="custom-toast-body">
+      <label>{text}</label>
+      {type !== "dowload" && <a onClick={onHandleCloseToast}>Locate</a>}
+    </div>
+  )
+}
+toast.configure();
 
 export const Directory = (props) => {
   Modal.setAppElement("#root");
@@ -280,8 +296,13 @@ export const Directory = (props) => {
     formData.append("directory", cur_dir);
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
-    !isMobileOnly && setUploadingModal(true);
+    if(isMobileOnly) {
+      scroll.scrollToTop({containerId: "context-area"});
+    } else {
+      setUploadingModal(true);
+    }
     uploadFiles(formData).then((response) => {
+      isMobileOnly && setUploadingFiles([]);
       let res_arr = [...files];
       response.forEach((file) => {
         res_arr.push(file);
@@ -289,6 +310,16 @@ export const Directory = (props) => {
       setFiles(res_arr);
       setUploaded(true);
       setFileCount(0);
+      if (isMobileOnly) {
+        toast.dark(<CustomToast text="All pending uploads have completed" type="upload"/>, {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom"
+        })
+      }
     });
   };
 
@@ -395,7 +426,14 @@ export const Directory = (props) => {
           mobileDisabled: false,
           forceDesktopMode: true,
         })
-          .then((res) => console.log(res))
+          .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
+            position: toast.POSITION.BOTTOM_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom"
+          }))
           .catch((e) => console.warn(e));
       }
     }
@@ -422,7 +460,14 @@ export const Directory = (props) => {
                   mobileDisabled: false,
                   forceDesktopMode: true,
                 })
-                  .then((res) => console.log(res))
+                  .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
+                    position: toast.POSITION.BOTTOM_CENTER,
+                    hideProgressBar: true,
+                    closeOnClick: false,
+                    pauseOnHover: true,
+                    draggable: true,
+                    className: "toast-custom"
+                  }))
                   .catch((e) => console.warn(e));
               }
             } else {
@@ -871,8 +916,27 @@ export const Directory = (props) => {
                     </svg>
                   </button>
                 </div>
-              </div>
-              <div className="context-area">
+              </div>              
+              <div className="context-area" id="context-area">
+                {isMobileOnly && uploading_files.length > 0 && (
+                  <div className="layout-view upload">
+                    <div className="layout-content">
+                      <div className="layout-header">
+                        <h2>Uploads</h2>
+                      </div>
+                      <div className="main-content">
+                          {uploading_files.map((item, i) => (
+                            <div className="guesture">
+                              <UploadViews
+                                key={i}
+                                file={item}
+                              />
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <div className="layout-view">
                   {folders.length > 0 && (
                     <div

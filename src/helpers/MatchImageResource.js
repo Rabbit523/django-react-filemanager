@@ -83,3 +83,18 @@ export const matchImageResource128 = (props) => {
     ? imageGroup128.file
     : imageGroup128.file;
 };
+
+export const getBase64BackgroundImage = (file) => {
+  let reader = new FileReader();
+  reader.onload = function (e) {
+    const image_style = {
+      backgroundImage: `url(${e.target.result})`,
+      backgroundRepeat: "no-repeat",
+      backgroundSize: "cover",
+      width: "100%",
+      height: "auto",
+    };
+    return image_style;
+  }
+  reader.readAsDataURL(file);
+};
