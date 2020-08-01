@@ -49,9 +49,9 @@ def create_presigned_post(object_name, directory, filetype, username):
             Bucket=aws_config.BUCKET_NAME,
             Key=path,
             Fields={"acl": "public-read", "Content-Type": filetype,
-                    "success_action_redirect": "http://127.0.0.1:8000"},
+                    "success_action_redirect": "http://18.183.173.57:8080"},
             Conditions=[{"acl": "public-read"}, {"Content-Type": filetype},
-                        {"success_action_redirect": "http://127.0.0.1:8000"}],
+                        {"success_action_redirect": "http://18.183.173.57:8080"}],
             ExpiresIn=3600,
         )
     except ClientError as e:

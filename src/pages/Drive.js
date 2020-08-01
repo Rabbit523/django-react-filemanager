@@ -1122,32 +1122,36 @@ export const Drive = (props) => {
                 ) : (
                   <div className="layout-view" id="quick-context-area">
                     {folders.length > 0 && (
-                      <div className="layout-content folder">
+                      <div
+                        className={
+                          is_gridType
+                            ? "layout-content folder"
+                            : "layout-content folder list"
+                        }
+                      >
                         <div className="layout-header">
                           <h2>Folders</h2>
                         </div>
                         <div className="main-content" id="folder-view">
-                          <div className="list-group">
-                            {folders.map((item, i) => (
-                              <animated.div
-                                {...bind()}
-                                className={
-                                  selected_folder &&
-                                  item.id === selected_folder.id
-                                    ? "guesture active"
-                                    : "guesture"
-                                }
-                                id={"guesture folder " + item.id}
-                                key={i}
-                              >
-                                <FolderViews
-                                  name={item.name}
-                                  id={item.id}
-                                  onHandleSide={onHandleMobileSideOpen}
-                                />
-                              </animated.div>
-                            ))}
-                          </div>
+                          {folders.map((item, i) => (
+                             <animated.div
+                               {...bind()}
+                               className={
+                                 selected_folder &&
+                                 item.id === selected_folder.id
+                                   ? "guesture active"
+                                   : "guesture"
+                               }
+                               id={"guesture folder " + item.id}
+                               key={i}
+                             >
+                               <FolderViews
+                                 name={item.name}
+                                 id={item.id}
+                                 onHandleSide={onHandleMobileSideOpen}
+                               />
+                             </animated.div>
+                          ))}
                         </div>
                       </div>
                     )}
