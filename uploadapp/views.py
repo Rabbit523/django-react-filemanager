@@ -19,6 +19,7 @@ from django.forms.models import model_to_dict
 from django.utils.encoding import smart_str
 
 from . import aws_config
+from . import config
 from .models import File, User, Folder
 
 
@@ -49,9 +50,9 @@ def create_presigned_post(object_name, directory, filetype, username):
             Bucket=aws_config.BUCKET_NAME,
             Key=path,
             Fields={"acl": "public-read", "Content-Type": filetype,
-                    "success_action_redirect": "http://127.0.0.1:8000"},
+                    "success_action_redirect": config.PROD_PATH},
             Conditions=[{"acl": "public-read"}, {"Content-Type": filetype},
-                        {"success_action_redirect": "http://127.0.0.1:8000"}],
+                        {"success_action_redirect": config.PROD_PATH}],
             ExpiresIn=3600,
         )
     except ClientError as e:

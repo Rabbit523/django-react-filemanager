@@ -1,8 +1,6 @@
 import axios from "axios";
 import * as actionTypes from "./actionTypes";
-
-const BASE_URL = "http://127.0.0.1:8000";
-const PROD_BASE_URL = "http://18.133.54.86:8000";
+import config from "../config";
 
 export const authStart = () => {
   return {
@@ -44,7 +42,7 @@ export const authLogin = (username, password) => {
   return (dispatch) => {
     dispatch(authStart());
     axios
-      .post(`${BASE_URL}/rest-auth/login/`, {
+      .post(`${config.PROD_BASE_URL}/rest-auth/login/`, {
         username: username,
         password: password,
       })
@@ -66,7 +64,7 @@ export const authSignup = (username, email, password1, password2) => {
   return (dispatch) => {
     dispatch(authStart());
     axios
-      .post(`${BASE_URL}/rest-auth/registration/`, {
+      .post(`${config.PROD_BASE_URL}/rest-auth/registration/`, {
         username: username,
         email: email,
         password1: password1,
