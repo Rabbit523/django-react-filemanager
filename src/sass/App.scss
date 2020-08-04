@@ -381,7 +381,7 @@ body {
                   padding-top: 15px;
                 }
                 .main-content {
-                  min-height: 500px;
+                  min-height: 300px;
                   display: flex;
                   flex-wrap: wrap;
                   .guesture {
@@ -540,7 +540,7 @@ body {
       &.upload {
         .upload-overlay {
           z-index: 1074;
-          background: rgba(0,0,0,.4);
+          background: rgba(0, 0, 0, 0.4);
           position: absolute;
           top: 0;
           left: 0;
@@ -1077,6 +1077,7 @@ body {
     position: fixed;
     right: 0;
     bottom: 0;
+    z-index: 1073;
   }
   .file-upload-modal {
     position: absolute;
@@ -1086,7 +1087,6 @@ body {
     box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.2);
     border-radius: 2px;
     max-height: 600px;
-    z-index: 1073;
     transition: opacity 0.2s;
     background: #fff;
     width: 350px;

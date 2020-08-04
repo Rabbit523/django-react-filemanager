@@ -23,8 +23,8 @@ import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
-import { animateScroll as scroll } from "react-scroll";
-import { toast } from 'react-toastify';
+import { animateScroll as scroll, Element, scroller } from "react-scroll";
+import { toast } from "react-toastify";
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFilesByDirectory,
@@ -40,21 +40,26 @@ import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import { FolderViews, FileViews, ListViews, UploadViews } from "../containers/Views";
+import {
+  FolderViews,
+  FileViews,
+  ListViews,
+  UploadViews,
+} from "../containers/Views";
 import Layout from "../containers/Layout";
 
 const CustomToast = ({ closeToast, text, type }) => {
   const onHandleCloseToast = () => {
     closeToast();
-    scroll.scrollToBottom({containerId: "context-area"});
+    scroll.scrollToBottom({ containerId: "context-area" });
   };
   return (
     <div className="custom-toast-body">
       <label>{text}</label>
       {type !== "dowload" && <a onClick={onHandleCloseToast}>Locate</a>}
     </div>
-  )
-}
+  );
+};
 toast.configure();
 
 export const Directory = (props) => {
@@ -62,7 +67,7 @@ export const Directory = (props) => {
   const fileRef = useRef();
   const folderRef = useRef();
   const inputRef = useRef();
-  
+
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
@@ -171,7 +176,10 @@ export const Directory = (props) => {
   const eventContextHandler = useCallback(
     (e) => {
       if (e.button === 2 && !isMobileOnly) {
-        if (availableUploadArea.includes(e.target.id)) {
+        if (
+          availableUploadArea.includes(e.target.id) ||
+          availableUploadArea.includes(e.target.getAttribute("data-value"))
+        ) {
           setContextTrigger(false);
           setContext(true);
         } else if (availableDownloadArea.includes(e.target.className)) {
@@ -286,6 +294,11 @@ export const Directory = (props) => {
     }
   };
 
+  const onHandleUploadFileSelect = (file) => {
+    const selected_file = files.find((ele, index) => ele.name === file.name);
+    setSelectedFile(selected_file);
+    scroll.scrollToBottom({ containerId: "context-area" });
+  };
   const handleChangeFile = async (e) => {
     var formData = new FormData();
     var file_arr = [];
@@ -296,8 +309,8 @@ export const Directory = (props) => {
     formData.append("directory", cur_dir);
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
-    if(isMobileOnly) {
-      scroll.scrollToTop({containerId: "context-area"});
+    if (isMobileOnly) {
+      scroll.scrollToTop({ containerId: "context-area" });
     } else {
       setUploadingModal(true);
     }
@@ -311,18 +324,37 @@ export const Directory = (props) => {
       setUploaded(true);
       setFileCount(0);
       if (isMobileOnly) {
-        toast.dark(<CustomToast text="All pending uploads have completed" type="upload"/>, {
-          position: toast.POSITION.BOTTOM_CENTER,
-          hideProgressBar: true,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          className: "toast-custom"
-        })
+        toast.dark(
+          <CustomToast
+            text="All pending uploads have completed"
+            type="upload"
+          />,
+          {
+            position: toast.POSITION.BOTTOM_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
       }
     });
   };
 
+  const onHandleUploadFolderSelect = (folder) => {
+    const selected_folder = folders.find(
+      (ele, index) => ele.name === folder.name
+    );
+    setSelectedFolder(selected_folder);
+    scroller.scrollTo("folderElement", {
+      containerId: "context-area",
+      duration: 1500,
+      delay: 100,
+      offset: 0,
+      smooth: true,
+    });
+  };
   const handleChangeFolder = async (e) => {
     var formData = new FormData();
     var directory = "";
@@ -364,7 +396,7 @@ export const Directory = (props) => {
     inputRef.current.focus();
     inputRef.current.select();
   };
-  
+
   const closeCreateModal = () => {
     setCreatingModal(false);
   };
@@ -426,14 +458,22 @@ export const Directory = (props) => {
           mobileDisabled: false,
           forceDesktopMode: true,
         })
-          .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
-            position: toast.POSITION.BOTTOM_CENTER,
-            hideProgressBar: true,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            className: "toast-custom"
-          }))
+          .then((res) =>
+            toast.dark(
+              <CustomToast
+                text="1 item will be download. See notification for details"
+                type="download"
+              />,
+              {
+                position: toast.POSITION.BOTTOM_CENTER,
+                hideProgressBar: true,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                className: "toast-custom",
+              }
+            )
+          )
           .catch((e) => console.warn(e));
       }
     }
@@ -460,14 +500,22 @@ export const Directory = (props) => {
                   mobileDisabled: false,
                   forceDesktopMode: true,
                 })
-                  .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
-                    position: toast.POSITION.BOTTOM_CENTER,
-                    hideProgressBar: true,
-                    closeOnClick: false,
-                    pauseOnHover: true,
-                    draggable: true,
-                    className: "toast-custom"
-                  }))
+                  .then((res) =>
+                    toast.dark(
+                      <CustomToast
+                        text="1 item will be download. See notification for details"
+                        type="download"
+                      />,
+                      {
+                        position: toast.POSITION.BOTTOM_CENTER,
+                        hideProgressBar: true,
+                        closeOnClick: false,
+                        pauseOnHover: true,
+                        draggable: true,
+                        className: "toast-custom",
+                      }
+                    )
+                  )
                   .catch((e) => console.warn(e));
               }
             } else {
@@ -643,6 +691,9 @@ export const Directory = (props) => {
                                       height="24px"
                                       viewBox="0 0 24 24"
                                       focusable="false"
+                                      onClick={() =>
+                                        onHandleUploadFileSelect(file)
+                                      }
                                     >
                                       <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
                                     </svg>
@@ -708,6 +759,9 @@ export const Directory = (props) => {
                                       height="24px"
                                       viewBox="0 0 24 24"
                                       focusable="false"
+                                      onClick={() =>
+                                        onHandleUploadFolderSelect(folder)
+                                      }
                                     >
                                       <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
                                     </svg>
@@ -916,7 +970,7 @@ export const Directory = (props) => {
                     </svg>
                   </button>
                 </div>
-              </div>              
+              </div>
               <div className="context-area" id="context-area">
                 {isMobileOnly && uploading_files.length > 0 && (
                   <div className="layout-view upload">
@@ -925,14 +979,11 @@ export const Directory = (props) => {
                         <h2>Uploads</h2>
                       </div>
                       <div className="main-content">
-                          {uploading_files.map((item, i) => (
-                            <div className="guesture">
-                              <UploadViews
-                                key={i}
-                                file={item}
-                              />
-                            </div>
-                          ))}
+                        {uploading_files.map((item, i) => (
+                          <div className="guesture">
+                            <UploadViews key={i} file={item} />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -945,34 +996,38 @@ export const Directory = (props) => {
                           ? "layout-content folder"
                           : "layout-content folder list"
                       }
+                      id="layout-folder"
                     >
-                      <div className="layout-header">
+                      <div className="layout-header" id="folder-header">
                         <h2>Folders</h2>
                       </div>
-                      <div className="main-content" id="folder-view">
-                        {folders.map((item, i) => (
-                          <animated.div
-                            {...bind()}
-                            className={
-                              selected_folder && item.id === selected_folder.id
-                                ? "guesture active"
-                                : "guesture"
-                            }
-                            id={"guesture folder " + item.id}
-                            key={i}
-                          >
-                            <FolderViews
-                              name={item.name}
-                              id={item.id}
-                              onHandleSide={onHandleMobileSideOpen}
-                            />
-                          </animated.div>
-                        ))}
-                      </div>
+                      <Element name="folderElement">
+                        <div className="main-content" id="folder-view">
+                          {folders.map((item, i) => (
+                            <animated.div
+                              {...bind()}
+                              className={
+                                selected_folder &&
+                                item.id === selected_folder.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              data-value="guesture"
+                              key={i}
+                            >
+                              <FolderViews
+                                name={item.name}
+                                id={item.id}
+                                onHandleSide={onHandleMobileSideOpen}
+                              />
+                            </animated.div>
+                          ))}
+                        </div>
+                      </Element>
                     </div>
                   )}
-                  <div className="layout-content file">
-                    <div className="layout-header">
+                  <div className="layout-content file" id="layout-file">
+                    <div className="layout-header" id="file-header">
                       {files.length > 0 &&
                         (is_gridType || (!is_gridType && isMobileOnly)) && (
                           <h2>Files</h2>
@@ -1030,7 +1085,7 @@ export const Directory = (props) => {
                                 ? "guesture active"
                                 : "guesture"
                             }
-                            id={"guesture file " + item.id + " detail"}
+                            data-value="guesture"
                             key={i}
                           >
                             <FileViews
@@ -1055,7 +1110,7 @@ export const Directory = (props) => {
                                     ? "guesture active"
                                     : "guesture"
                                 }
-                                id={"guesture folder " + item.id}
+                                data-value="guesture"
                                 key={i}
                               >
                                 <ListViews
@@ -1077,7 +1132,7 @@ export const Directory = (props) => {
                                   ? "guesture active"
                                   : "guesture"
                               }
-                              id={"guesture file " + item.id}
+                              data-value="guesture"
                               key={i}
                             >
                               <ListViews
@@ -1119,7 +1174,9 @@ export const Directory = (props) => {
               </div>
               {isMobileOnly && (
                 <React.Fragment>
-                  {is_mobilePopup && <div className="mobile-side-overlay"></div>}
+                  {is_mobilePopup && (
+                    <div className="mobile-side-overlay"></div>
+                  )}
                   <TransitionablePortal
                     open={is_mobilePopup}
                     onClose={onHandleMobilePopupClose}
@@ -1169,7 +1226,9 @@ export const Directory = (props) => {
                         <div className="item-row">
                           <div
                             className="item"
-                            onClick={() => onHandleMobilePopupItem("google_doc")}
+                            onClick={() =>
+                              onHandleMobilePopupItem("google_doc")
+                            }
                           >
                             <div className="icon-box">
                               <img
@@ -1346,7 +1405,10 @@ export const Directory = (props) => {
                 </React.Fragment>
               )}
             </div>
-            <ContextMenu id="dir-context" className={is_triggerable ? "context hide" : "context"}>
+            <ContextMenu
+              id="dir-context"
+              className={is_triggerable ? "context hide" : "context"}
+            >
               {is_context ? (
                 <React.Fragment>
                   <MenuItem data={{ foo: "new_folder" }} onClick={handleClick}>

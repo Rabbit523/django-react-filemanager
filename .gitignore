@@ -54,3 +54,4 @@ spritesmith.scss
 # templated email
 tmp_email/
 freeze
+build/asset-manifest.json

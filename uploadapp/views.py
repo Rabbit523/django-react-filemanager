@@ -163,13 +163,12 @@ class FolderUploadView(APIView):
                     size=file.size
                 )
             else:
-                flag = 0
-            folder_instance = Folder.objects.create(
-                name=request.data['directory'], user=user, parent=request.data['parent_id'])
-            res_json = model_to_dict(folder_instance)
-            return Response(res_json, status=status.HTTP_200_OK)
-        else:
-            return Response(res_json, status=status.HTTP_400_BAD_REQUEST)
+                return Response(res_json, status=status.HTTP_400_BAD_REQUEST)
+
+        folder_instance = Folder.objects.create(
+            name=request.data['directory'], user=user, parent=request.data['parent_id'])
+        res_json = model_to_dict(folder_instance)
+        return Response(res_json, status=status.HTTP_200_OK)
 
 
 class FileGetView(APIView):

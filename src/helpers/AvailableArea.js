@@ -3,10 +3,14 @@ export const availableUploadArea = [
   "quick-view",
   "folder-view",
   "quick-context-area",
+  "folder-header",
+  "layout-folder",
+  "file-header",
+  "layout-file",
+  "guesture",
 ];
 
 export const availableDownloadArea = [
-  "file-view",
   "image-view",
   "icon",
   "image",
@@ -19,5 +23,4 @@ export const availableDownloadArea = [
   "td-owner",
   "td-modified",
   "td-size",
-  "guesture",
 ];

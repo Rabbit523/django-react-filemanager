@@ -6,7 +6,7 @@ const PROD_BASE_URL = "http://18.133.54.86:8000";
 export const getFiles = () => {
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api-upload/get/`, {
+      .post(`${BASE_URL}/api-upload/get/`, {
         token: localStorage.getItem("token"),
       })
       .then((res) => {
@@ -22,7 +22,7 @@ export const getFiles = () => {
 export const getFilesByDirectory = (directory) => {
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api-upload/get-directory-files`, {
+      .post(`${BASE_URL}/api-upload/get-directory-files`, {
         token: localStorage.getItem("token"),
         directory,
       })
@@ -40,7 +40,7 @@ export const uploadFiles = (formData) => {
   formData.append("token", localStorage.getItem("token"));
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api-upload/upload/`, formData)
+      .post(`${BASE_URL}/api-upload/upload/`, formData)
       .then((res) => {
         resolve(res.data);
       })
@@ -54,7 +54,7 @@ export const uploadFiles = (formData) => {
 export const createFolder = (name, parent_id) => {
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api/create/`, {
+      .post(`${BASE_URL}/api/create/`, {
         name,
         parent_id,
         token: localStorage.getItem("token"),
@@ -72,7 +72,7 @@ export const createFolder = (name, parent_id) => {
 export const getAllFolders = () => {
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api/get-all/`, {
+      .post(`${BASE_URL}/api/get-all/`, {
         token: localStorage.getItem("token"),
       })
       .then((res) => {
@@ -88,7 +88,7 @@ export const getAllFolders = () => {
 export const getFolders = (parent_id) => {
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api/get/`, {
+      .post(`${BASE_URL}/api/get/`, {
         token: localStorage.getItem("token"),
         parent_id,
       })
@@ -106,7 +106,7 @@ export const uploadFolder = (formData) => {
   formData.append("token", localStorage.getItem("token"));
   return new Promise((resolve, reject) => {
     axios
-      .post(`${PROD_BASE_URL}/api-upload/upload-folder/`, formData)
+      .post(`${BASE_URL}/api-upload/upload-folder/`, formData)
       .then((res) => {
         resolve(res.data);
       })
