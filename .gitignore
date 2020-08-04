@@ -8,6 +8,12 @@
 __pycache__/
 /.vscode/
 
+# db migrations and aws config
+/uploadapp/migrations/*
+/uploadapp/aws_config.py
+/folderapp/migrations/*
+/accounts/migrations/*
+
 # coverage result
 .coverage
 /coverage/
@@ -27,6 +33,7 @@ package-lock.json
 /frontend/webpack_bundles/*
 /webpack-stats.json
 /jquery-webpack-stats.json
+build
 
 # Sass
 .sass-cache
@@ -34,8 +41,8 @@ package-lock.json
 
 # General
 /theprojectname-venv/
-/venv/
-/venv/
+venv/
+env/
 /output/
 /cache/
 boilerplate.zip
@@ -46,4 +53,4 @@ spritesmith.scss
 
 # templated email
 tmp_email/
-/build/
+freeze
