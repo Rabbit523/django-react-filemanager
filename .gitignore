@@ -16,7 +16,7 @@ __pycache__/
 
 /backend/settings/base.py
 /backend/settings/dev.py
-
+/src/config.js
 # coverage result
 .coverage
 /coverage/
