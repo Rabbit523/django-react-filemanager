@@ -257,7 +257,14 @@ export const Drive = (props) => {
   const onHandleUploadFileSelect = (file) => {
     const selected_file = files.find((ele, index) => ele.name === file.name);
     setSelectedFile(selected_file);
-    scroll.scrollToBottom({ containerId: "context-area" });
+    const element_name = is_gridType ? selected_file.name + "_grid_file_" + selected_file.id : selected_file.name + "list_file_" + selected_file.id;
+    scroller.scrollTo(element_name, {
+      containerId: "context-area",
+      duration: 1500,
+      delay: 100,
+      offset: 0,
+      smooth: true,
+    });
   };
   const handleChangeFile = async (e) => {
     var formData = new FormData();
@@ -307,7 +314,8 @@ export const Drive = (props) => {
       (ele, index) => ele.name === folder.name
     );
     setSelectedFolder(selected_folder);
-    scroller.scrollTo("folderElement", {
+    const element_name = is_gridType ? selected_folder.name + "_grid_folder_" + selected_folder.id : selected_folder.name + "_list_folder_" + selected_folder.id;
+    scroller.scrollTo(element_name, {
       containerId: "context-area",
       duration: 1500,
       delay: 100,
@@ -1017,29 +1025,29 @@ export const Drive = (props) => {
                         <div className="layout-header" id="folder-header">
                           <h2>Folders</h2>
                         </div>
-                        <Element name="folderElement">
-                          <div className="main-content" id="folder-view">
-                            {folders.map((item, i) => (
-                              <animated.div
-                                {...bind()}
-                                className={
-                                  selected_folder &&
-                                  item.id === selected_folder.id
-                                    ? "guesture active"
-                                    : "guesture"
-                                }
-                                data-value="guesture"
-                                key={i}
-                              >
+                        <div className="main-content" id="folder-view">
+                          {folders.map((item, i) => (
+                            <animated.div
+                              {...bind()}
+                              className={
+                                selected_folder &&
+                                item.id === selected_folder.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              data-value="guesture"
+                              key={i}
+                            >
+                              <Element name={item.name + "_grid_folder_" + item.id}>
                                 <FolderViews
                                   name={item.name}
                                   id={item.id}
                                   onHandleSide={onHandleMobileSideOpen}
                                 />
-                              </animated.div>
-                            ))}
-                          </div>
-                        </Element>
+                                </Element>
+                            </animated.div>
+                          ))}
+                        </div>
                       </div>
                     )}
                     <div className="layout-content file" id="layout-file">
@@ -1111,14 +1119,16 @@ export const Drive = (props) => {
                               data-value="guesture"
                               key={i}
                             >
-                              <FileViews
-                                path={item.path}
-                                type={item.content_type}
-                                name={item.name}
-                                id={item.id}
-                                access="detail"
-                                onHandleSide={onHandleMobileSideOpen}
-                              />
+                              <Element name={item.name + "_grid_file_" + item.id}>
+                                <FileViews
+                                  path={item.path}
+                                  type={item.content_type}
+                                  name={item.name}
+                                  id={item.id}
+                                  access="detail"
+                                  onHandleSide={onHandleMobileSideOpen}
+                                />
+                                </Element>
                             </animated.div>
                           ))}
                         {!is_gridType && (
@@ -1136,15 +1146,17 @@ export const Drive = (props) => {
                                   data-value="guesture"
                                   key={i}
                                 >
-                                  <ListViews
-                                    owner=""
-                                    last_modified={item.modified_date}
-                                    type="folder"
-                                    name={item.name}
-                                    size=""
-                                    id={item.id}
-                                    onHandleSide={onHandleMobileSideOpen}
-                                  />
+                                  <Element name={item.name + "_list_folder_" + item.id}>
+                                    <ListViews
+                                      owner=""
+                                      last_modified={item.modified_date}
+                                      type="folder"
+                                      name={item.name}
+                                      size=""
+                                      id={item.id}
+                                      onHandleSide={onHandleMobileSideOpen}
+                                    />
+                                  </Element>
                                 </animated.div>
                               ))}
                             {files.map((item, i) => (
@@ -1158,16 +1170,18 @@ export const Drive = (props) => {
                                 data-value="guesture"
                                 key={i}
                               >
-                                <ListViews
-                                  owner=""
-                                  last_modified={item.modified_date}
-                                  type={item.content_type}
-                                  name={item.name}
-                                  size={item.size}
-                                  id={item.id}
-                                  access="detail"
-                                  onHandleSide={onHandleMobileSideOpen}
-                                />
+                                <Element name={item.name + "_list_file_" + item.id}>
+                                  <ListViews
+                                    owner=""
+                                    last_modified={item.modified_date}
+                                    type={item.content_type}
+                                    name={item.name}
+                                    size={item.size}
+                                    id={item.id}
+                                    access="detail"
+                                    onHandleSide={onHandleMobileSideOpen}
+                                  />
+                                </Element>
                               </animated.div>
                             ))}
                           </div>
