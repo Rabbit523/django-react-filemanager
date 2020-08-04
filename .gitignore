@@ -11,6 +11,7 @@ __pycache__/
 # db migrations and aws config
 /uploadapp/migrations/*
 /uploadapp/aws_config.py
+/uploadapp/config.py
 /folderapp/migrations/*
 /accounts/migrations/*
 
