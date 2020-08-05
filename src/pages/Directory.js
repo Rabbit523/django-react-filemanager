@@ -167,7 +167,73 @@ export const Directory = (props) => {
         }
       }
     });
-  }, [props.location.pathname, is_uploaded]);
+  }, []);
+
+  useEffect(() => {
+    if (props.location.state) {
+      cur_dir && getFilesByDirectory(cur_dir).then((res) => {
+        if (uploading_files.length > 0) {
+          for (let index = 0; index < uploading_files.length; index ++) {
+            for (let i = res.length - 1; i >= 0; i--) {
+              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+                uploading_files[index].uploaded = true;
+                break;
+              }
+            }
+          }
+          setUploadingFiles(uploading_files);
+        }
+        setFiles(res);
+        getFolders(props.location.state.id).then((response) => {
+          if (uploading_folders.length > 0) {
+            for (let index = 0; index < uploading_folders.length; index ++) {
+              for (let i = response.length - 1; i >= 0; i--) {
+                if(response[i].name === uploading_folders[index].name) {
+                  uploading_folders[index].uploaded = true;
+                  break;
+                }
+              }
+            }
+            setUploadingFolders(uploading_folders);
+          }
+          setFolders(response);
+          setPageLoaded(true);
+        });
+      });
+    } else {
+      cur_dir && getFilesByDirectory(cur_dir).then((res) => {
+        if (uploading_files.length > 0) {
+          for (let index = 0; index < uploading_files.length; index ++) {
+            for (let i = res.length - 1; i >= 0; i--) {
+              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+                uploading_files[index].uploaded = true;
+                break;
+              }
+            }
+          }
+          setUploadingFiles(uploading_files);
+        }
+        setFiles(res);
+        directoryToID(cur_dir).then((id) => {
+          getFolders(id).then((response) => {
+            if (uploading_folders.length > 0) {
+              for (let index = 0; index < uploading_folders.length; index ++) {
+                for (let i = response.length - 1; i >= 0; i--) {
+                  if(response[i].name === uploading_folders[index].name) {
+                    uploading_folders[index].uploaded = true;
+                    break;
+                  }
+                }
+              }
+              setUploadingFolders(uploading_folders);
+            }
+            setFolders(response);
+            setPageLoaded(true);
+          });
+        });
+      });
+    }
+  }, [is_uploaded]);
 
   useEffect(() => {
     setTotalFileCount(total_file_count + file_count);
@@ -311,6 +377,7 @@ export const Directory = (props) => {
     var file_arr = [];
     Object.values(e.target.files).forEach((file) => {
       formData.append("file", file);
+      file.uploaded = false;
       file_arr.push(file);
     });
     formData.append("directory", cur_dir);
@@ -321,6 +388,7 @@ export const Directory = (props) => {
     } else {
       setUploadingModal(true);
     }
+    setUploaded(false);
     uploadFiles(formData).then((response) => {
       isMobileOnly && setUploadingFiles([]);
       let res_arr = [...files];
@@ -376,10 +444,12 @@ export const Directory = (props) => {
     arr.push({
       name: directory.split("/")[0],
       count: e.target.files.length,
+      uploaded: false,
     });
     setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
     setFileCount(file_count + 1);
     setUploadingModal(true);
+    setUploaded(false);
     uploadFolder(formData).then((res) => {
       const arr = [];
       arr.push(res);
@@ -674,15 +744,15 @@ export const Directory = (props) => {
                 {Object.values(uploading_files).map((file, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!file.uploaded ? "logo loading" : "logo"}>
                         <img src={matchImageResource16(file)} alt={file.name} />
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!file.uploaded ? "name loading" : "name"}>
                         <span>{file.name}</span>
                         <span></span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!file.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -727,7 +797,7 @@ export const Directory = (props) => {
                 {Object.values(uploading_folders).map((folder, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!folder.uploaded ? "logo loading" : "logo"}>
                         <svg
                           x="0px"
                           y="0px"
@@ -743,14 +813,14 @@ export const Directory = (props) => {
                           </g>
                         </svg>
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!folder.uploaded ? "name loading" : "name"}>
                         <span>{folder.name}</span>
                         <span>
-                          {!is_uploaded ? 0 : folder.count} of {folder.count}
+                          {!folder.uploaded ? 0 : folder.count} of {folder.count}
                         </span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!folder.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -1042,7 +1112,7 @@ export const Directory = (props) => {
                         )}
                       {!is_gridType && !isMobileOnly && (
                         <div className="list-tool">
-                          <div className="td-name">
+                          <div className="th-name">
                             <span>Name</span>
                             <button class="direction" onClick={handleSortOrder}>
                               {order_desc ? (
@@ -1070,13 +1140,13 @@ export const Directory = (props) => {
                               )}
                             </button>
                           </div>
-                          <div className="td-owner">
+                          <div className="th-owner">
                             <span>Owner</span>
                           </div>
-                          <div className="td-modified">
+                          <div className="th-modified">
                             <span>Last modified</span>
                           </div>
-                          <div className="td-size">
+                          <div className="th-size">
                             <span>File size</span>
                           </div>
                         </div>
