@@ -167,7 +167,73 @@ export const Directory = (props) => {
         }
       }
     });
-  }, [props.location.pathname, is_uploaded]);
+  }, []);
+
+  useEffect(() => {
+    if (props.location.state) {
+      cur_dir && getFilesByDirectory(cur_dir).then((res) => {
+        if (uploading_files.length > 0) {
+          for (let index = 0; index < uploading_files.length; index ++) {
+            for (let i = res.length - 1; i >= 0; i--) {
+              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+                uploading_files[index].uploaded = true;
+                break;
+              }
+            }
+          }
+          setUploadingFiles(uploading_files);
+        }
+        setFiles(res);
+        getFolders(props.location.state.id).then((response) => {
+          if (uploading_folders.length > 0) {
+            for (let index = 0; index < uploading_folders.length; index ++) {
+              for (let i = response.length - 1; i >= 0; i--) {
+                if(response[i].name === uploading_folders[index].name) {
+                  uploading_folders[index].uploaded = true;
+                  break;
+                }
+              }
+            }
+            setUploadingFolders(uploading_folders);
+          }
+          setFolders(response);
+          setPageLoaded(true);
+        });
+      });
+    } else {
+      cur_dir && getFilesByDirectory(cur_dir).then((res) => {
+        if (uploading_files.length > 0) {
+          for (let index = 0; index < uploading_files.length; index ++) {
+            for (let i = res.length - 1; i >= 0; i--) {
+              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+                uploading_files[index].uploaded = true;
+                break;
+              }
+            }
+          }
+          setUploadingFiles(uploading_files);
+        }
+        setFiles(res);
+        directoryToID(cur_dir).then((id) => {
+          getFolders(id).then((response) => {
+            if (uploading_folders.length > 0) {
+              for (let index = 0; index < uploading_folders.length; index ++) {
+                for (let i = response.length - 1; i >= 0; i--) {
+                  if(response[i].name === uploading_folders[index].name) {
+                    uploading_folders[index].uploaded = true;
+                    break;
+                  }
+                }
+              }
+              setUploadingFolders(uploading_folders);
+            }
+            setFolders(response);
+            setPageLoaded(true);
+          });
+        });
+      });
+    }
+  }, [is_uploaded]);
 
   useEffect(() => {
     setTotalFileCount(total_file_count + file_count);
@@ -297,13 +363,21 @@ export const Directory = (props) => {
   const onHandleUploadFileSelect = (file) => {
     const selected_file = files.find((ele, index) => ele.name === file.name);
     setSelectedFile(selected_file);
-    scroll.scrollToBottom({ containerId: "context-area" });
+    const element_name = is_gridType ? selected_file.name + "_grid_file_" + selected_file.id : selected_file.name + "list_file_" + selected_file.id;
+    scroller.scrollTo(element_name, {
+      containerId: "context-area",
+      duration: 1500,
+      delay: 100,
+      offset: 0,
+      smooth: true,
+    });
   };
   const handleChangeFile = async (e) => {
     var formData = new FormData();
     var file_arr = [];
     Object.values(e.target.files).forEach((file) => {
       formData.append("file", file);
+      file.uploaded = false;
       file_arr.push(file);
     });
     formData.append("directory", cur_dir);
@@ -314,6 +388,7 @@ export const Directory = (props) => {
     } else {
       setUploadingModal(true);
     }
+    setUploaded(false);
     uploadFiles(formData).then((response) => {
       isMobileOnly && setUploadingFiles([]);
       let res_arr = [...files];
@@ -347,7 +422,8 @@ export const Directory = (props) => {
       (ele, index) => ele.name === folder.name
     );
     setSelectedFolder(selected_folder);
-    scroller.scrollTo("folderElement", {
+    const element_name = is_gridType ? selected_folder.name + "_grid_folder_" + selected_folder.id : selected_folder.name + "_list_folder_" + selected_folder.id;
+    scroller.scrollTo(element_name, {
       containerId: "context-area",
       duration: 1500,
       delay: 100,
@@ -368,10 +444,12 @@ export const Directory = (props) => {
     arr.push({
       name: directory.split("/")[0],
       count: e.target.files.length,
+      uploaded: false,
     });
     setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
     setFileCount(file_count + 1);
     setUploadingModal(true);
+    setUploaded(false);
     uploadFolder(formData).then((res) => {
       const arr = [];
       arr.push(res);
@@ -666,15 +744,15 @@ export const Directory = (props) => {
                 {Object.values(uploading_files).map((file, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!file.uploaded ? "logo loading" : "logo"}>
                         <img src={matchImageResource16(file)} alt={file.name} />
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!file.uploaded ? "name loading" : "name"}>
                         <span>{file.name}</span>
                         <span></span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!file.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -719,7 +797,7 @@ export const Directory = (props) => {
                 {Object.values(uploading_folders).map((folder, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!folder.uploaded ? "logo loading" : "logo"}>
                         <svg
                           x="0px"
                           y="0px"
@@ -735,14 +813,14 @@ export const Directory = (props) => {
                           </g>
                         </svg>
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!folder.uploaded ? "name loading" : "name"}>
                         <span>{folder.name}</span>
                         <span>
-                          {!is_uploaded ? 0 : folder.count} of {folder.count}
+                          {!folder.uploaded ? 0 : folder.count} of {folder.count}
                         </span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!folder.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -1001,29 +1079,29 @@ export const Directory = (props) => {
                       <div className="layout-header" id="folder-header">
                         <h2>Folders</h2>
                       </div>
-                      <Element name="folderElement">
-                        <div className="main-content" id="folder-view">
-                          {folders.map((item, i) => (
-                            <animated.div
-                              {...bind()}
-                              className={
-                                selected_folder &&
-                                item.id === selected_folder.id
-                                  ? "guesture active"
-                                  : "guesture"
-                              }
-                              data-value="guesture"
-                              key={i}
-                            >
+                      <div className="main-content" id="folder-view">
+                        {folders.map((item, i) => (
+                          <animated.div
+                            {...bind()}
+                            className={
+                              selected_folder &&
+                              item.id === selected_folder.id
+                                ? "guesture active"
+                                : "guesture"
+                            }
+                            data-value="guesture"
+                            key={i}
+                          >
+                            <Element name={item.name + "_grid_folder_" + item.id}>
                               <FolderViews
                                 name={item.name}
                                 id={item.id}
                                 onHandleSide={onHandleMobileSideOpen}
                               />
-                            </animated.div>
-                          ))}
-                        </div>
-                      </Element>
+                            </Element>
+                          </animated.div>
+                        ))}
+                      </div>
                     </div>
                   )}
                   <div className="layout-content file" id="layout-file">
@@ -1034,7 +1112,7 @@ export const Directory = (props) => {
                         )}
                       {!is_gridType && !isMobileOnly && (
                         <div className="list-tool">
-                          <div className="td-name">
+                          <div className="th-name">
                             <span>Name</span>
                             <button class="direction" onClick={handleSortOrder}>
                               {order_desc ? (
@@ -1062,13 +1140,13 @@ export const Directory = (props) => {
                               )}
                             </button>
                           </div>
-                          <div className="td-owner">
+                          <div className="th-owner">
                             <span>Owner</span>
                           </div>
-                          <div className="td-modified">
+                          <div className="th-modified">
                             <span>Last modified</span>
                           </div>
-                          <div className="td-size">
+                          <div className="th-size">
                             <span>File size</span>
                           </div>
                         </div>
@@ -1088,14 +1166,16 @@ export const Directory = (props) => {
                             data-value="guesture"
                             key={i}
                           >
-                            <FileViews
-                              path={item.path}
-                              type={item.content_type}
-                              name={item.name}
-                              id={item.id}
-                              access="detail"
-                              onHandleSide={onHandleMobileSideOpen}
-                            />
+                            <Element name={item.name + "_grid_file_" + item.id}>
+                              <FileViews
+                                path={item.path}
+                                type={item.content_type}
+                                name={item.name}
+                                id={item.id}
+                                access="detail"
+                                onHandleSide={onHandleMobileSideOpen}
+                              />
+                            </Element>
                           </animated.div>
                         ))}
                       {!is_gridType && (
@@ -1113,15 +1193,17 @@ export const Directory = (props) => {
                                 data-value="guesture"
                                 key={i}
                               >
-                                <ListViews
-                                  owner=""
-                                  last_modified={item.modified_date}
-                                  type="folder"
-                                  name={item.name}
-                                  size=""
-                                  id={item.id}
-                                  onHandleSide={onHandleMobileSideOpen}
-                                />
+                                <Element name={item.name + "_list_folder_" + item.id}>
+                                  <ListViews
+                                    owner=""
+                                    last_modified={item.modified_date}
+                                    type="folder"
+                                    name={item.name}
+                                    size=""
+                                    id={item.id}
+                                    onHandleSide={onHandleMobileSideOpen}
+                                  />
+                                </Element>
                               </animated.div>
                             ))}
                           {files.map((item, i) => (
@@ -1135,15 +1217,17 @@ export const Directory = (props) => {
                               data-value="guesture"
                               key={i}
                             >
-                              <ListViews
-                                owner=""
-                                last_modified={item.modified_date}
-                                type={item.content_type}
-                                name={item.name}
-                                size={item.size}
-                                id={item.id}
-                                onHandleSide={onHandleMobileSideOpen}
-                              />
+                              <Element name={item.name + "_list_file_" + item.id}>
+                                <ListViews
+                                  owner=""
+                                  last_modified={item.modified_date}
+                                  type={item.content_type}
+                                  name={item.name}
+                                  size={item.size}
+                                  id={item.id}
+                                  onHandleSide={onHandleMobileSideOpen}
+                                />
+                              </Element>
                             </animated.div>
                           ))}
                         </div>

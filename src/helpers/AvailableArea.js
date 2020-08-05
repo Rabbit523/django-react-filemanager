@@ -8,6 +8,7 @@ export const availableUploadArea = [
   "file-header",
   "layout-file",
   "guesture",
+  "context-area"
 ];
 
 export const availableDownloadArea = [
