@@ -1,6 +1,7 @@
 from django.contrib.auth.backends import ModelBackend
 from django.contrib.auth import get_user_model
 from django.db.models import Q
+from django.core.exceptions import MultipleObjectsReturned
 
 
 UserModel = get_user_model()
@@ -14,7 +15,7 @@ class EmailBackend(ModelBackend):
         except UserModel.DoesNotExist:
             UserModel().set_password(password)
         except MultipleObjectsReturned:
-            return User.objects.filter(email=username).order_by('id').first()
+            return UserModel().objects.filter(email=username).order_by('id').first()
         else:
             if user.check_password(password) and self.user_can_authenticate(user):
                 return user

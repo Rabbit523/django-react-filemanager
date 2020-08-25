@@ -11,8 +11,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'Filemanager',
-        'USER': 'sniper',
-        'PASSWORD': '123456',
+        'USER': 'postgres',
+        'PASSWORD': 'superstar1123',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
@@ -21,3 +21,5 @@ DATABASES = {
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:3000',
 )
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
