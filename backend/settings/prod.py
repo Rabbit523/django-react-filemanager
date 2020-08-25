@@ -2,8 +2,8 @@
 
 from .base import *
 
-DEBUG = False
-ALLOWED_HOSTS += ['http://domain.com']
+DEBUG = True
+ALLOWED_HOSTS += ['http://domain.com', '18.183.173.57', '127.0.0.1']
 WSGI_APPLICATION = 'backend.wsgi.prod.application'
 
 DATABASES = {
@@ -24,4 +24,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-STATICFILES_STORAGE = 'whitenoise.django.GzipManifestStaticFilesStorage'
+CORS_ORIGIN_WHITELIST = (
+    'http://localhost:3000',
+)
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

@@ -21,3 +21,5 @@ DATABASES = {
 CORS_ORIGIN_WHITELIST = (
     'http://localhost:3000',
 )
+
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
