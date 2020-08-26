@@ -40,7 +40,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_ALL_ORIGINS = True
 
 ROOT_URLCONF = 'backend.urls'
 
@@ -72,7 +72,7 @@ STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'build/static'),
     os.path.join(BASE_DIR, 'assets'),
 ]
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = os.path.join(BASE_DIR, 'build/static')
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 SITE_ID = 1
 
