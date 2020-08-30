@@ -8,12 +8,12 @@ WSGI_APPLICATION = 'backend.wsgi.prod.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'db_name',
-        'USER': 'db_user',
-        'PASSWORD': 'db_password',
-        'HOST': 'localhost',
-        'PORT': '',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': 'Filemanager',
+        'USER': 'postgres',
+        'PASSWORD': 'superstar1123',
+        'HOST': '127.0.0.1',
+        'PORT': '5432',
     }
 }
 
@@ -25,6 +25,7 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 CORS_ORIGIN_WHITELIST = (
+    'http://localhost:3000',
     'http://localhost:3000',
     'http://18.183.173.57'
 )

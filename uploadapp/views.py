@@ -28,12 +28,22 @@ from .s3_multipart_upload import S3MultipartUpload
 #     qs_json = serializers.serialize('json', qs)
 #     return HttpResponse(qs_json, content_type='application/json')
 
+def handle_uploaded_file(file, file_path):
+    with open(file_path, 'wb+') as destination:
+        print('==========open-upload-multipart==========')
+        for chunk in file.chunks():
+            print('===========chunk===========')
+            destination.write(chunk)
 
 def upload_multipart(file, directory, username):
 
     # path where file can be saved
     file_path = os.path.join(settings.MEDIA_ROOT, file.name)
-    default_storage.save(file.name, ContentFile(file.read()))
+    print('==========start-upload-multipart==========')
+    handle_uploaded_file(file, file_path)
+    print('==========end-upload-multipart==========')
+
+    # default_storage.save(file.name, ContentFile(file.read()))
 
     mpu = S3MultipartUpload(
         aws_config.BUCKET_NAME,
