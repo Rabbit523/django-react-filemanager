@@ -2,30 +2,70 @@
 import os
 import boto3
 import requests
+import logging
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework import status
 from rest_framework.parsers import MultiPartParser, FormParser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.authtoken.models import Token
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from django.http import HttpResponse, Http404
+from django.http import HttpResponse
 from botocore.exceptions import ClientError
 from botocore.client import Config
 from django.conf import settings
 from django.forms.models import model_to_dict
-from django.utils.encoding import smart_str
 
 from . import aws_config
-from .models import File, User, Folder
+from . import config
+from .models import File, Folder
+from .s3_multipart_upload import S3MultipartUpload
 
 
-def some_view(request):
-    qs = SomeModel.objects.all()
-    qs_json = serializers.serialize('json', qs)
-    return HttpResponse(qs_json, content_type='application/json')
+# def some_view(request):
+#     qs = SomeModel.objects.all()
+#     qs_json = serializers.serialize('json', qs)
+#     return HttpResponse(qs_json, content_type='application/json')
+
+def handle_uploaded_file(file, file_path):
+    with open(file_path, 'wb+') as destination:
+        print('==========open-upload-multipart==========')
+        for chunk in file.chunks():
+            print('===========chunk===========')
+            destination.write(chunk)
+
+def upload_multipart(file, directory, username):
+
+    # path where file can be saved
+    file_path = os.path.join(settings.MEDIA_ROOT, file.name)
+    print('==========start-upload-multipart==========')
+    handle_uploaded_file(file, file_path)
+    print('==========end-upload-multipart==========')
+
+    # default_storage.save(file.name, ContentFile(file.read()))
+
+    mpu = S3MultipartUpload(
+        aws_config.BUCKET_NAME,
+        file.name,
+        file_path,
+        username,
+        directory
+    )
+    # # abort all multipart uploads for this bucket (optional, for starting over)
+    # mpu.abort_all()
+    # # create new multipart upload
+    # mpu_id = mpu.create()
+    # # upload parts
+    # parts = mpu.upload(mpu_id)
+    # # complete multipart upload
+    # http_response = mpu.complete(mpu_id, parts)
+    http_response = 500
+    if mpu.multipart_upload_large_file():
+        http_response = 200
+
+    default_storage.delete(file_path)
+    return http_response
 
 
 def create_presigned_post(object_name, directory, filetype, username):
@@ -49,9 +89,9 @@ def create_presigned_post(object_name, directory, filetype, username):
             Bucket=aws_config.BUCKET_NAME,
             Key=path,
             Fields={"acl": "public-read", "Content-Type": filetype,
-                    "success_action_redirect": "http://18.183.173.57:8080"},
+                    "success_action_redirect": config.DEV_PATH},
             Conditions=[{"acl": "public-read"}, {"Content-Type": filetype},
-                        {"success_action_redirect": "http://18.183.173.57:8080"}],
+                        {"success_action_redirect": config.DEV_PATH}],
             ExpiresIn=3600,
         )
     except ClientError as e:
@@ -97,14 +137,17 @@ class FileUploadView(APIView):
         flag = 1
         arr = []
         for file in files:
-            response = uploadfile_to_s3(file, directory, user.username)
-            if response.status_code == 200 or response.status_code == 204:
+            response = upload_multipart(file, directory, user.username)
+            # response = uploadfile_to_s3(file, directory, user.username)
+            if response == 200:
                 if directory is None:
                     url = 'https://s3.{}.amazonaws.com/{}/{}/{}'.format(
-                        aws_config.REGION, aws_config.BUCKET_NAME, user.username, file.name)
+                        aws_config.REGION, aws_config.BUCKET_NAME,
+                        user.username, file.name)
                 else:
                     url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
-                        aws_config.REGION, aws_config.BUCKET_NAME, user.username, directory, file.name)
+                        aws_config.REGION, aws_config.BUCKET_NAME,
+                        user.username, directory, file.name)
                 file_instance = File.objects.create(
                     path=url,
                     content_type=file.content_type,
@@ -147,13 +190,15 @@ class FolderUploadView(APIView):
             if i != 0:
                 directory += '/'
 
-        flag = 1
+        # flag = 1
         res_json = None
         for file in files:
-            response = uploadfile_to_s3(file, directory, user.username)
-            if response.status_code == 200 or response.status_code == 204:
+            response = upload_multipart(file, directory, user.username)
+            # response = uploadfile_to_s3(file, directory, user.username)
+            if response == 200:
                 url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
-                    aws_config.REGION, aws_config.BUCKET_NAME, user.username, directory, file.name)
+                    aws_config.REGION, aws_config.BUCKET_NAME,
+                    user.username, directory, file.name)
                 File.objects.create(
                     path=url,
                     content_type=file.content_type,
@@ -163,13 +208,13 @@ class FolderUploadView(APIView):
                     size=file.size
                 )
             else:
-                flag = 0
-            folder_instance = Folder.objects.create(
-                name=request.data['directory'], user=user, parent=request.data['parent_id'])
-            res_json = model_to_dict(folder_instance)
-            return Response(res_json, status=status.HTTP_200_OK)
-        else:
-            return Response(res_json, status=status.HTTP_400_BAD_REQUEST)
+                return Response(res_json, status=status.HTTP_400_BAD_REQUEST)
+
+        folder_instance = Folder.objects.create(
+            name=request.data['directory'], user=user,
+            parent=request.data['parent_id'])
+        res_json = model_to_dict(folder_instance)
+        return Response(res_json, status=status.HTTP_200_OK)
 
 
 class FileGetView(APIView):

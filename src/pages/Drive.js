@@ -23,8 +23,8 @@ import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
-import { animateScroll as scroll } from "react-scroll";
-import { toast } from 'react-toastify';
+import { animateScroll as scroll, Element, scroller } from "react-scroll";
+import { toast } from "react-toastify";
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFiles,
@@ -39,21 +39,26 @@ import {
   availableUploadArea,
   availableDownloadArea,
 } from "../helpers/AvailableArea";
-import { FolderViews, FileViews, ListViews, UploadViews } from "../containers/Views";
+import {
+  FolderViews,
+  FileViews,
+  ListViews,
+  UploadViews,
+} from "../containers/Views";
 import Layout from "../containers/Layout";
 
 const CustomToast = ({ closeToast, text, type }) => {
   const onHandleCloseToast = () => {
     closeToast();
-    scroll.scrollToBottom({containerId: "context-area"});
+    scroll.scrollToBottom({ containerId: "context-area" });
   };
   return (
     <div className="custom-toast-body">
       <label>{text}</label>
       {type !== "download" && <a onClick={onHandleCloseToast}>Locate</a>}
     </div>
-  )
-}
+  );
+};
 toast.configure();
 
 export const Drive = (props) => {
@@ -61,7 +66,7 @@ export const Drive = (props) => {
   const fileRef = useRef();
   const folderRef = useRef();
   const inputRef = useRef();
-  
+
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
@@ -127,6 +132,66 @@ export const Drive = (props) => {
         setPageLoaded(true);
       });
     });
+  }, []);
+
+  useEffect(() => {
+    if (is_uploaded) {
+      getFiles().then((res) => {
+        if (uploading_files.length > 0) {
+          for (let index = 0; index < uploading_files.length; index ++) {
+            for (let i = res.length - 1; i >= 0; i--) {
+              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+                uploading_files[index].uploaded = true;
+                break;
+              }
+            }
+          }
+          setUploadingFiles(uploading_files);
+        }
+        if (res.length > 0) {
+          const quick_arr = [];
+          res.forEach((item, i) => {
+            if (res.length > 5) {
+              if (i > res.length - 6) {
+                quick_arr.push(item);
+              }
+            } else {
+              if (i < res.length) {
+                quick_arr.push(item);
+              }
+            }
+          });
+          setQuickFiles(quick_arr);
+          const file_arr = [
+            {
+              path: imageGroup128.getting_started,
+              content_type: "image get_started",
+              name: "Getting started",
+              size: "",
+              id: 0,
+            },
+          ].concat(res);
+          setFiles(file_arr);
+        } else {
+          setFiles(res);
+        }
+        getFolders(0).then((res) => {
+          if (uploading_folders.length > 0) {
+            for (let index = 0; index < uploading_folders.length; index ++) {
+              for (let i = res.length - 1; i >= 0; i--) {
+                if(res[i].name === uploading_folders[index].name) {
+                  uploading_folders[index].uploaded = true;
+                  break;
+                }
+              }
+            }
+            setUploadingFolders(uploading_folders);
+          }
+          setFolders(res);
+          setPageLoaded(true);
+        });
+      });
+    }
   }, [is_uploaded]);
 
   useEffect(() => {
@@ -136,7 +201,10 @@ export const Drive = (props) => {
   const eventContextHandler = useCallback(
     (e) => {
       if (e.button === 2 && !isMobileOnly) {
-        if (availableUploadArea.includes(e.target.id)) {
+        if (
+          availableUploadArea.includes(e.target.id) ||
+          availableUploadArea.includes(e.target.getAttribute("data-value"))
+        ) {
           setContextTrigger(false);
           setContext(true);
         } else if (availableDownloadArea.includes(e.target.className)) {
@@ -246,21 +314,35 @@ export const Drive = (props) => {
     }
   };
 
-  const handleChangeFile = async (e) => {
+  const onHandleUploadFileSelect = (file) => {
+    const selected_file = files.find((ele, index) => ele.name === file.name);
+    setSelectedFile(selected_file);
+    const element_name = is_gridType ? selected_file.name + "_grid_file_" + selected_file.id : selected_file.name + "list_file_" + selected_file.id;
+    scroller.scrollTo(element_name, {
+      containerId: "context-area",
+      duration: 1500,
+      delay: 100,
+      offset: 0,
+      smooth: true,
+    });
+  };
+  const handleChangeFile = (e) => {
     var formData = new FormData();
     var file_arr = [];
     Object.values(e.target.files).forEach((file) => {
       formData.append("file", file);
+      file.uploaded = false;
       file_arr.push(file);
     });
     formData.append("directory", null);
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
-    if(isMobileOnly) {
-      scroll.scrollToTop({containerId: "context-area"});
+    if (isMobileOnly) {
+      scroll.scrollToTop({ containerId: "context-area" });
     } else {
       setUploadingModal(true);
     }
+    setUploaded(false);
     uploadFiles(formData).then((response) => {
       isMobileOnly && setUploadingFiles([]);
       let res_arr = [...files];
@@ -271,18 +353,38 @@ export const Drive = (props) => {
       setUploaded(true);
       setFileCount(0);
       if (isMobileOnly) {
-        toast.dark(<CustomToast text="All pending uploads have completed" type="upload"/>, {
-          position: toast.POSITION.BOTTOM_CENTER,
-          hideProgressBar: true,
-          closeOnClick: false,
-          pauseOnHover: true,
-          draggable: true,
-          className: "toast-custom"
-        })
+        toast.dark(
+          <CustomToast
+            text="All pending uploads have completed"
+            type="upload"
+          />,
+          {
+            position: toast.POSITION.BOTTOM_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
       }
     });
   };
 
+  const onHandleUploadFolderSelect = (folder) => {
+    const selected_folder = folders.find(
+      (ele, index) => ele.name === folder.name
+    );
+    setSelectedFolder(selected_folder);
+    const element_name = is_gridType ? selected_folder.name + "_grid_folder_" + selected_folder.id : selected_folder.name + "_list_folder_" + selected_folder.id;
+    scroller.scrollTo(element_name, {
+      containerId: "context-area",
+      duration: 1500,
+      delay: 100,
+      offset: 0,
+      smooth: true,
+    });
+  };
   const handleChangeFolder = async (e) => {
     var formData = new FormData();
     var directory = "";
@@ -296,10 +398,12 @@ export const Drive = (props) => {
     arr.push({
       name: directory.split("/")[0],
       count: e.target.files.length,
+      uploaded: false,
     });
     setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
     setFileCount(file_count + 1);
     setUploadingModal(true);
+    setUploaded(false);
     uploadFolder(formData).then((res) => {
       const arr = [];
       arr.push(res);
@@ -386,14 +490,22 @@ export const Drive = (props) => {
           mobileDisabled: false,
           forceDesktopMode: true,
         })
-          .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
-            position: toast.POSITION.BOTTOM_CENTER,
-            hideProgressBar: true,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            className: "toast-custom"
-          }))
+          .then((res) =>
+            toast.dark(
+              <CustomToast
+                text="1 item will be download. See notification for details"
+                type="download"
+              />,
+              {
+                position: toast.POSITION.BOTTOM_CENTER,
+                hideProgressBar: true,
+                closeOnClick: false,
+                pauseOnHover: true,
+                draggable: true,
+                className: "toast-custom",
+              }
+            )
+          )
           .catch((e) => console.warn(e));
       }
     }
@@ -423,14 +535,22 @@ export const Drive = (props) => {
                     mobileDisabled: false,
                     forceDesktopMode: true,
                   })
-                    .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
-                      position: toast.POSITION.BOTTOM_CENTER,
-                      hideProgressBar: true,
-                      closeOnClick: false,
-                      pauseOnHover: true,
-                      draggable: true,
-                      className: "toast-custom"
-                    }))
+                    .then((res) =>
+                      toast.dark(
+                        <CustomToast
+                          text="1 item will be download. See notification for details"
+                          type="download"
+                        />,
+                        {
+                          position: toast.POSITION.BOTTOM_CENTER,
+                          hideProgressBar: true,
+                          closeOnClick: false,
+                          pauseOnHover: true,
+                          draggable: true,
+                          className: "toast-custom",
+                        }
+                      )
+                    )
                     .catch((e) => console.warn(e));
                 }
               } else {
@@ -444,14 +564,22 @@ export const Drive = (props) => {
                   mobileDisabled: false,
                   forceDesktopMode: true,
                 })
-                  .then((res) => toast.dark(<CustomToast text="1 item will be download. See notification for details" type="download"/>, {
-                    position: toast.POSITION.BOTTOM_CENTER,
-                    hideProgressBar: true,
-                    closeOnClick: false,
-                    pauseOnHover: true,
-                    draggable: true,
-                    className: "toast-custom"
-                  }))
+                  .then((res) =>
+                    toast.dark(
+                      <CustomToast
+                        text="1 item will be download. See notification for details"
+                        type="download"
+                      />,
+                      {
+                        position: toast.POSITION.BOTTOM_CENTER,
+                        hideProgressBar: true,
+                        closeOnClick: false,
+                        pauseOnHover: true,
+                        draggable: true,
+                        className: "toast-custom",
+                      }
+                    )
+                  )
                   .catch((e) => console.warn(e));
               }
             } else {
@@ -617,15 +745,15 @@ export const Drive = (props) => {
                 {Object.values(uploading_files).map((file, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!file.uploaded ? "logo loading" : "logo"}>
                         <img src={matchImageResource16(file)} alt={file.name} />
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!file.uploaded ? "name loading" : "name"}>
                         <span>{file.name}</span>
                         <span></span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!file.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -642,6 +770,9 @@ export const Drive = (props) => {
                                       height="24px"
                                       viewBox="0 0 24 24"
                                       focusable="false"
+                                      onClick={() =>
+                                        onHandleUploadFileSelect(file)
+                                      }
                                     >
                                       <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
                                     </svg>
@@ -667,7 +798,7 @@ export const Drive = (props) => {
                 {Object.values(uploading_folders).map((folder, i) => (
                   <div className="item" key={i}>
                     <div className="content">
-                      <div className={!is_uploaded ? "logo loading" : "logo"}>
+                      <div className={!folder.uploaded ? "logo loading" : "logo"}>
                         <svg
                           x="0px"
                           y="0px"
@@ -683,14 +814,14 @@ export const Drive = (props) => {
                           </g>
                         </svg>
                       </div>
-                      <div className={!is_uploaded ? "name loading" : "name"}>
+                      <div className={!folder.uploaded ? "name loading" : "name"}>
                         <span>{folder.name}</span>
                         <span>
-                          {!is_uploaded ? 0 : folder.count} of {folder.count}
+                          {!folder.uploaded ? 0 : folder.count} of {folder.count}
                         </span>
                       </div>
                       <div className="status">
-                        {!is_uploaded ? (
+                        {!folder.uploaded ? (
                           <ReactLoading
                             type="spin"
                             color="#929292"
@@ -707,6 +838,9 @@ export const Drive = (props) => {
                                       height="24px"
                                       viewBox="0 0 24 24"
                                       focusable="false"
+                                      onClick={() =>
+                                        onHandleUploadFolderSelect(folder)
+                                      }
                                     >
                                       <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
                                     </svg>
@@ -905,14 +1039,11 @@ export const Drive = (props) => {
                         <h2>Uploads</h2>
                       </div>
                       <div className="main-content">
-                          {uploading_files.map((item, i) => (
-                            <div className="guesture">
-                              <UploadViews
-                                key={i}
-                                file={item}
-                              />
-                            </div>
-                          ))}
+                        {uploading_files.map((item, i) => (
+                          <div className="guesture">
+                            <UploadViews key={i} file={item} />
+                          </div>
+                        ))}
                       </div>
                     </div>
                   </div>
@@ -953,8 +1084,9 @@ export const Drive = (props) => {
                             ? "layout-content folder"
                             : "layout-content folder list"
                         }
+                        id="layout-folder"
                       >
-                        <div className="layout-header">
+                        <div className="layout-header" id="folder-header">
                           <h2>Folders</h2>
                         </div>
                         <div className="main-content" id="folder-view">
@@ -967,27 +1099,29 @@ export const Drive = (props) => {
                                   ? "guesture active"
                                   : "guesture"
                               }
-                              id={"guesture folder " + item.id}
+                              data-value="guesture"
                               key={i}
                             >
-                              <FolderViews
-                                name={item.name}
-                                id={item.id}
-                                onHandleSide={onHandleMobileSideOpen}
-                              />
+                              <Element name={item.name + "_grid_folder_" + item.id}>
+                                <FolderViews
+                                  name={item.name}
+                                  id={item.id}
+                                  onHandleSide={onHandleMobileSideOpen}
+                                />
+                                </Element>
                             </animated.div>
                           ))}
                         </div>
                       </div>
                     )}
-                    <div className="layout-content file">
-                      <div className="layout-header">
+                    <div className="layout-content file" id="layout-file">
+                      <div className="layout-header" id="file-header">
                         {(is_gridType || (!is_gridType && isMobileOnly)) && (
                           <h2>Files</h2>
                         )}
                         {!is_gridType && !isMobileOnly && (
                           <div className="list-tool">
-                            <div className="td-name">
+                            <div className="th-name">
                               <span>Name</span>
                               <button
                                 class="direction"
@@ -1024,13 +1158,13 @@ export const Drive = (props) => {
                                 )}
                               </button>
                             </div>
-                            <div className="td-owner">
+                            <div className="th-owner">
                               <span>Owner</span>
                             </div>
-                            <div className="td-modified">
+                            <div className="th-modified">
                               <span>Last modified</span>
                             </div>
-                            <div className="td-size">
+                            <div className="th-size">
                               <span>File size</span>
                             </div>
                           </div>
@@ -1046,17 +1180,19 @@ export const Drive = (props) => {
                                   ? "guesture active"
                                   : "guesture"
                               }
-                              id={"guesture file " + item.id + " detail"}
+                              data-value="guesture"
                               key={i}
                             >
-                              <FileViews
-                                path={item.path}
-                                type={item.content_type}
-                                name={item.name}
-                                id={item.id}
-                                access="detail"
-                                onHandleSide={onHandleMobileSideOpen}
-                              />
+                              <Element name={item.name + "_grid_file_" + item.id}>
+                                <FileViews
+                                  path={item.path}
+                                  type={item.content_type}
+                                  name={item.name}
+                                  id={item.id}
+                                  access="detail"
+                                  onHandleSide={onHandleMobileSideOpen}
+                                />
+                                </Element>
                             </animated.div>
                           ))}
                         {!is_gridType && (
@@ -1071,18 +1207,20 @@ export const Drive = (props) => {
                                       ? "guesture active"
                                       : "guesture"
                                   }
-                                  id={"guesture folder " + item.id}
+                                  data-value="guesture"
                                   key={i}
                                 >
-                                  <ListViews
-                                    owner=""
-                                    last_modified={item.modified_date}
-                                    type="folder"
-                                    name={item.name}
-                                    size=""
-                                    id={item.id}
-                                    onHandleSide={onHandleMobileSideOpen}
-                                  />
+                                  <Element name={item.name + "_list_folder_" + item.id}>
+                                    <ListViews
+                                      owner=""
+                                      last_modified={item.modified_date}
+                                      type="folder"
+                                      name={item.name}
+                                      size=""
+                                      id={item.id}
+                                      onHandleSide={onHandleMobileSideOpen}
+                                    />
+                                  </Element>
                                 </animated.div>
                               ))}
                             {files.map((item, i) => (
@@ -1093,19 +1231,21 @@ export const Drive = (props) => {
                                     ? "guesture active"
                                     : "guesture"
                                 }
-                                id={"guesture file " + item.id + " detail"}
+                                data-value="guesture"
                                 key={i}
                               >
-                                <ListViews
-                                  owner=""
-                                  last_modified={item.modified_date}
-                                  type={item.content_type}
-                                  name={item.name}
-                                  size={item.size}
-                                  id={item.id}
-                                  access="detail"
-                                  onHandleSide={onHandleMobileSideOpen}
-                                />
+                                <Element name={item.name + "_list_file_" + item.id}>
+                                  <ListViews
+                                    owner=""
+                                    last_modified={item.modified_date}
+                                    type={item.content_type}
+                                    name={item.name}
+                                    size={item.size}
+                                    id={item.id}
+                                    access="detail"
+                                    onHandleSide={onHandleMobileSideOpen}
+                                  />
+                                </Element>
                               </animated.div>
                             ))}
                           </div>
@@ -1134,23 +1274,23 @@ export const Drive = (props) => {
                         </div>
                         <div className="main-content" id="folder-view">
                           {folders.map((item, i) => (
-                             <animated.div
-                               {...bind()}
-                               className={
-                                 selected_folder &&
-                                 item.id === selected_folder.id
-                                   ? "guesture active"
-                                   : "guesture"
-                               }
-                               id={"guesture folder " + item.id}
-                               key={i}
-                             >
-                               <FolderViews
-                                 name={item.name}
-                                 id={item.id}
-                                 onHandleSide={onHandleMobileSideOpen}
-                               />
-                             </animated.div>
+                            <animated.div
+                              {...bind()}
+                              className={
+                                selected_folder &&
+                                item.id === selected_folder.id
+                                  ? "guesture active"
+                                  : "guesture"
+                              }
+                              data-value="guesture"
+                              key={i}
+                            >
+                              <FolderViews
+                                name={item.name}
+                                id={item.id}
+                                onHandleSide={onHandleMobileSideOpen}
+                              />
+                            </animated.div>
                           ))}
                         </div>
                       </div>
@@ -1457,15 +1597,19 @@ export const Drive = (props) => {
                         </div>
                         {selected_file.name && (
                           <div className="tools">
-                            {!isIOS && <div
-                              className="item"
-                              onClick={() => onHandleMobileSideItem("download")}
-                            >
-                              <div className="icon-box">
-                                <Icon name="download" />
+                            {!isIOS && (
+                              <div
+                                className="item"
+                                onClick={() =>
+                                  onHandleMobileSideItem("download")
+                                }
+                              >
+                                <div className="icon-box">
+                                  <Icon name="download" />
+                                </div>
+                                <label>Download</label>
                               </div>
-                              <label>Download</label>
-                            </div>}
+                            )}
                             <div
                               className="item"
                               onClick={() => onHandleMobileSideItem("trash")}
