@@ -34,6 +34,81 @@ export const getFilesByDirectory = (directory) => {
   });
 };
 
+export const getSignedPostUrl = async (formData) => {
+  formData.append("token", localStorage.getItem("token"));
+  try {
+    const result = await axios.post(`${config.PROD_BASE_URL}/api-upload/getsignedurl/`, formData);
+    return { error: null, data: result };
+  } catch (error) {
+    return { error: error, data: null };
+  }
+};
+
+export const uploadChunk = async (url, chunk) => {
+  try {
+    const result = await axios.put(url, chunk);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+
+};
+
+export const completeMultiUpload = async (file, directory, parts, uploadId, type, size) => {
+
+  var formData = new FormData();
+  // formData.append('parts', parts);
+  formData.append('uploadId', uploadId);
+  formData.append("token", localStorage.getItem("token"));
+  formData.append("file", file);
+  formData.append("type", type);
+  formData.append("size", size);
+  formData.append("directory", directory);
+
+  formData.append('parts', JSON.stringify(parts));
+
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/completeUpload/`, formData);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+export const getMultiPartUploadId = async (file, directory) => {
+
+  var formData = new FormData();
+  formData.append('file', file);
+  formData.append('directory', directory);
+  formData.append("token", localStorage.getItem("token"));
+
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/initiateUpload/`, formData);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+export const uploadFile = async (formData) => {
+
+  formData.append("token", localStorage.getItem("token"));
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/upload/`, formData)
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+
 export const uploadFiles = (formData) => {
   formData.append("token", localStorage.getItem("token"));
   return new Promise((resolve, reject) => {

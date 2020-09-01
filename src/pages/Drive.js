@@ -13,6 +13,7 @@ import {
   Button,
   Label,
   TransitionablePortal,
+  Form,
 } from "semantic-ui-react";
 import { isMobileOnly, isIOS } from "react-device-detect";
 import ReactHoverObserver from "react-hover-observer";
@@ -28,10 +29,15 @@ import { toast } from "react-toastify";
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFiles,
+  uploadFile,
   uploadFiles,
   createFolder,
   uploadFolder,
   getFolders,
+  getSignedPostUrl,
+  getMultiPartUploadId,
+  uploadChunk,
+  completeMultiUpload
 } from "../helpers/RestAPI";
 import { imageGroup128, imageGroup16 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
@@ -46,6 +52,7 @@ import {
   UploadViews,
 } from "../containers/Views";
 import Layout from "../containers/Layout";
+import Axios from "axios";
 
 const CustomToast = ({ closeToast, text, type }) => {
   const onHandleCloseToast = () => {
@@ -55,7 +62,7 @@ const CustomToast = ({ closeToast, text, type }) => {
   return (
     <div className="custom-toast-body">
       <label>{text}</label>
-      {type !== "download" && <a onClick={onHandleCloseToast}>Locate</a>}
+      {type !== "download" || type !== "error" && <a onClick={onHandleCloseToast}>Locate</a>}
     </div>
   );
 };
@@ -98,6 +105,10 @@ export const Drive = (props) => {
   const [new_folder_title, setFolderTitle] = useState("Untitled folder");
   const [folders, setFolders] = useState([]);
 
+  const CHUNK_SIZE = Math.pow(1024, 3);
+  const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
+  const LIMIT = 6 * Math.pow(1024, 3);
+
   useEffect(() => {
     getFiles().then((res) => {
       if (res.length > 0) {
@@ -138,9 +149,9 @@ export const Drive = (props) => {
     if (is_uploaded) {
       getFiles().then((res) => {
         if (uploading_files.length > 0) {
-          for (let index = 0; index < uploading_files.length; index ++) {
+          for (let index = 0; index < uploading_files.length; index++) {
             for (let i = res.length - 1; i >= 0; i--) {
-              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+              if (res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
                 uploading_files[index].uploaded = true;
                 break;
               }
@@ -177,9 +188,9 @@ export const Drive = (props) => {
         }
         getFolders(0).then((res) => {
           if (uploading_folders.length > 0) {
-            for (let index = 0; index < uploading_folders.length; index ++) {
+            for (let index = 0; index < uploading_folders.length; index++) {
               for (let i = res.length - 1; i >= 0; i--) {
-                if(res[i].name === uploading_folders[index].name) {
+                if (res[i].name === uploading_folders[index].name) {
                   uploading_folders[index].uploaded = true;
                   break;
                 }
@@ -326,15 +337,68 @@ export const Drive = (props) => {
       smooth: true,
     });
   };
-  const handleChangeFile = (e) => {
-    var formData = new FormData();
+
+  const waitUpload = async (chunk) => {
+    let formData = new FormData();
+    formData.append('file', chunk.file);
+    formData.append('mpuId', chunk.mpuId);
+    formData.append('partNo', chunk.partNo);
+    formData.append('directory', chunk.directory);
+
+    const res = await getSignedPostUrl(formData);
+    const response = await uploadChunk(res.data.data.signed_url, chunk.data);
+
+    let etag = response.data.headers['etag'];
+    return {
+      'ETag': etag.substring(1, etag.length - 1),
+      'PartNumber': chunk.partNo
+    };
+  };
+
+  const uploadChunks = async (chunks) => {
+    let parts = [];
+
+    let chunk = chunks[0];
+    const promises = chunks.map(waitUpload);
+    parts = await Promise.all(promises);
+
+    const complete = await completeMultiUpload(chunk.file, chunk.directory, parts, chunk.mpuId, chunk.type, chunk.size);
+    return complete.data;
+  };
+
+  const calculateChunks = (file) => {
+    var minChunksCount = parseInt(file.size / CHUNK_SIZE);
+    var result = file.size % CHUNK_SIZE < CHUNK_LIMIT ? minChunksCount : minChunksCount + 1;
+    return result;
+  };
+
+  const handleChangeFile = async (e) => {
     var file_arr = [];
+
+    let overLimit = false;
     Object.values(e.target.files).forEach((file) => {
-      formData.append("file", file);
+      if (file.size > LIMIT) {
+        toast.dark(
+          <CustomToast
+            text="The size is too big and it cannot be uploaded"
+            type="error"
+          />,
+          {
+            position: toast.POSITION.TOP_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
+        overLimit = true;
+      }
       file.uploaded = false;
       file_arr.push(file);
     });
-    formData.append("directory", null);
+    if (overLimit) return;
+
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
     if (isMobileOnly) {
@@ -343,32 +407,69 @@ export const Drive = (props) => {
       setUploadingModal(true);
     }
     setUploaded(false);
-    uploadFiles(formData).then((response) => {
-      isMobileOnly && setUploadingFiles([]);
-      let res_arr = [...files];
-      response.forEach((file) => {
-        res_arr.push(file);
-      });
-      setFiles(res_arr);
-      setUploaded(true);
-      setFileCount(0);
-      if (isMobileOnly) {
-        toast.dark(
-          <CustomToast
-            text="All pending uploads have completed"
-            type="upload"
-          />,
-          {
-            position: toast.POSITION.BOTTOM_CENTER,
-            hideProgressBar: true,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            className: "toast-custom",
-          }
-        );
+
+    let response = [];
+    for (let file of file_arr) {
+
+      if (file.size < CHUNK_LIMIT) {
+        var formData = new FormData;
+        formData.append('file', file);
+        const fileResponse = await uploadFile(formData);
+        response.push(fileResponse.data);
       }
+      else {
+        const chunkCounts = calculateChunks(file);
+        let partNo = 1;
+        const res = await getMultiPartUploadId(file.name, null);
+        const mpuId = res.data.data.mpu_id;
+        let chunks = [];
+        let _offset = 0;
+        while (partNo <= chunkCounts) {
+          let readLength = CHUNK_SIZE;
+          if (file.size - _offset - CHUNK_SIZE < CHUNK_LIMIT) {
+            readLength = file.size - _offset;
+          }
+          var blob = file.slice(_offset, readLength + _offset);
+          chunks.push({
+            'file': file.name,
+            'type': file.type,
+            'size': file.size,
+            'mpuId': mpuId,
+            'partNo': partNo,
+            'directory': null,
+            'data': blob
+          });
+          _offset += readLength;
+          partNo++;
+        }
+        const fileResponse = await uploadChunks(chunks);
+        response.push(fileResponse.data);
+      }
+    }
+    isMobileOnly && setUploadingFiles([]);
+    let res_arr = [...files];
+    response.forEach((file) => {
+      res_arr.push(file);
     });
+    setFiles(res_arr);
+    setUploaded(true);
+    setFileCount(0);
+    if (isMobileOnly) {
+      toast.dark(
+        <CustomToast
+          text="All pending uploads have completed"
+          type="upload"
+        />,
+        {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom",
+        }
+      );
+    }
   };
 
   const onHandleUploadFolderSelect = (folder) => {
@@ -690,20 +791,20 @@ export const Drive = (props) => {
                           ></path>
                         </svg>
                       ) : (
-                        <svg
-                          x="0px"
-                          y="0px"
-                          width="14px"
-                          height="14px"
-                          viewBox="0 0 24 24"
-                          focusable="false"
-                        >
-                          <path
-                            fill="#FFFFFF"
-                            d="M2.83,18.83L12,9.66l9.17,9.17L24,16,12,4,0,16z"
-                          ></path>
-                        </svg>
-                      )}
+                          <svg
+                            x="0px"
+                            y="0px"
+                            width="14px"
+                            height="14px"
+                            viewBox="0 0 24 24"
+                            focusable="false"
+                          >
+                            <path
+                              fill="#FFFFFF"
+                              d="M2.83,18.83L12,9.66l9.17,9.17L24,16,12,4,0,16z"
+                            ></path>
+                          </svg>
+                        )}
                     </button>
                   }
                   position="bottom center"
@@ -760,37 +861,37 @@ export const Drive = (props) => {
                             className="loading"
                           />
                         ) : (
-                          <div className="icon">
-                            <ReactHoverObserver>
-                              {({ isHovering }) => (
-                                <React.Fragment>
-                                  {isHovering ? (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      focusable="false"
-                                      onClick={() =>
-                                        onHandleUploadFileSelect(file)
-                                      }
-                                    >
-                                      <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      fill="#0F9D58"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                                    </svg>
-                                  )}
-                                </React.Fragment>
-                              )}
-                            </ReactHoverObserver>
-                          </div>
-                        )}
+                            <div className="icon">
+                              <ReactHoverObserver>
+                                {({ isHovering }) => (
+                                  <React.Fragment>
+                                    {isHovering ? (
+                                      <svg
+                                        width="24px"
+                                        height="24px"
+                                        viewBox="0 0 24 24"
+                                        focusable="false"
+                                        onClick={() =>
+                                          onHandleUploadFileSelect(file)
+                                        }
+                                      >
+                                        <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
+                                      </svg>
+                                    ) : (
+                                        <svg
+                                          width="24px"
+                                          height="24px"
+                                          viewBox="0 0 24 24"
+                                          fill="#0F9D58"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                        </svg>
+                                      )}
+                                  </React.Fragment>
+                                )}
+                              </ReactHoverObserver>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -828,37 +929,37 @@ export const Drive = (props) => {
                             className="loading"
                           />
                         ) : (
-                          <div className="icon">
-                            <ReactHoverObserver>
-                              {({ isHovering }) => (
-                                <React.Fragment>
-                                  {isHovering ? (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      focusable="false"
-                                      onClick={() =>
-                                        onHandleUploadFolderSelect(folder)
-                                      }
-                                    >
-                                      <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      fill="#0F9D58"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                                    </svg>
-                                  )}
-                                </React.Fragment>
-                              )}
-                            </ReactHoverObserver>
-                          </div>
-                        )}
+                            <div className="icon">
+                              <ReactHoverObserver>
+                                {({ isHovering }) => (
+                                  <React.Fragment>
+                                    {isHovering ? (
+                                      <svg
+                                        width="24px"
+                                        height="24px"
+                                        viewBox="0 0 24 24"
+                                        focusable="false"
+                                        onClick={() =>
+                                          onHandleUploadFolderSelect(folder)
+                                        }
+                                      >
+                                        <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
+                                      </svg>
+                                    ) : (
+                                        <svg
+                                          width="24px"
+                                          height="24px"
+                                          viewBox="0 0 24 24"
+                                          fill="#0F9D58"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                        </svg>
+                                      )}
+                                  </React.Fragment>
+                                )}
+                              </ReactHoverObserver>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -1007,16 +1108,16 @@ export const Drive = (props) => {
                         <path d="M3,5v14h18V5H3z M7,7v2H5V7H7z M5,13v-2h2v2H5z M5,15h2v2H5V15z M19,17H9v-2h10V17z M19,13H9v-2h10V13z M19,9H9V7h10V9z"></path>
                       </svg>
                     ) : (
-                      <svg
-                        width="24px"
-                        height="24px"
-                        viewBox="0 0 24 24"
-                        fill="#000000"
-                      >
-                        <path d="M2,5v14h20V5H2z M14,7v4h-4V7H14z M4,7h4v4H4V7z M16,11V7h4v4H16z M4,17v-4h4v4H4z M10,17v-4h4v4H10z M20,17 h-4v-4h4V17z"></path>
-                        <path d="M0 0h24v24H0z" fill="none"></path>
-                      </svg>
-                    )}
+                        <svg
+                          width="24px"
+                          height="24px"
+                          viewBox="0 0 24 24"
+                          fill="#000000"
+                        >
+                          <path d="M2,5v14h20V5H2z M14,7v4h-4V7H14z M4,7h4v4H4V7z M16,11V7h4v4H16z M4,17v-4h4v4H4z M10,17v-4h4v4H10z M20,17 h-4v-4h4V17z"></path>
+                          <path d="M0 0h24v24H0z" fill="none"></path>
+                        </svg>
+                      )}
                   </button>
                   <button className="btn-layout" onClick={handleShowDetail}>
                     <svg
@@ -1095,7 +1196,7 @@ export const Drive = (props) => {
                               {...bind()}
                               className={
                                 selected_folder &&
-                                item.id === selected_folder.id
+                                  item.id === selected_folder.id
                                   ? "guesture active"
                                   : "guesture"
                               }
@@ -1108,7 +1209,7 @@ export const Drive = (props) => {
                                   id={item.id}
                                   onHandleSide={onHandleMobileSideOpen}
                                 />
-                                </Element>
+                              </Element>
                             </animated.div>
                           ))}
                         </div>
@@ -1142,20 +1243,20 @@ export const Drive = (props) => {
                                     <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
                                   </svg>
                                 ) : (
-                                  <svg
-                                    width="18px"
-                                    height="18px"
-                                    viewBox="0 0 48 48"
-                                    focusable="false"
-                                    fill="#000000"
-                                  >
-                                    <path
-                                      fill="none"
-                                      d="M0 0h48v48H0V0z"
-                                    ></path>
-                                    <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
-                                  </svg>
-                                )}
+                                    <svg
+                                      width="18px"
+                                      height="18px"
+                                      viewBox="0 0 48 48"
+                                      focusable="false"
+                                      fill="#000000"
+                                    >
+                                      <path
+                                        fill="none"
+                                        d="M0 0h48v48H0V0z"
+                                      ></path>
+                                      <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
+                                    </svg>
+                                  )}
                               </button>
                             </div>
                             <div className="th-owner">
@@ -1192,7 +1293,7 @@ export const Drive = (props) => {
                                   access="detail"
                                   onHandleSide={onHandleMobileSideOpen}
                                 />
-                                </Element>
+                              </Element>
                             </animated.div>
                           ))}
                         {!is_gridType && (
@@ -1203,7 +1304,7 @@ export const Drive = (props) => {
                                   {...bind()}
                                   className={
                                     selected_folder &&
-                                    item.id === selected_folder.id
+                                      item.id === selected_folder.id
                                       ? "guesture active"
                                       : "guesture"
                                   }
@@ -1260,135 +1361,135 @@ export const Drive = (props) => {
                     )}
                   </div>
                 ) : (
-                  <div className="layout-view" id="quick-context-area">
-                    {folders.length > 0 && (
-                      <div
-                        className={
-                          is_gridType
-                            ? "layout-content folder"
-                            : "layout-content folder list"
-                        }
-                      >
-                        <div className="layout-header">
-                          <h2>Folders</h2>
-                        </div>
-                        <div className="main-content" id="folder-view">
-                          {folders.map((item, i) => (
-                            <animated.div
-                              {...bind()}
-                              className={
-                                selected_folder &&
-                                item.id === selected_folder.id
-                                  ? "guesture active"
-                                  : "guesture"
-                              }
-                              data-value="guesture"
-                              key={i}
-                            >
-                              <FolderViews
-                                name={item.name}
-                                id={item.id}
-                                onHandleSide={onHandleMobileSideOpen}
-                              />
-                            </animated.div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    <div className="layout-content quick">
-                      <div className="layout-header">
-                        {is_gridType && <h2>Files</h2>}
-                        {!is_gridType && (
-                          <div className="list-tool">
-                            <div className="td-name">
-                              <span>Name</span>
-                              <button
-                                class="direction"
-                                onClick={handleSortOrder}
-                              >
-                                {order_desc ? (
-                                  <svg
-                                    width="18px"
-                                    height="18px"
-                                    viewBox="0 0 48 48"
-                                    focusable="false"
-                                    fill="#000000"
-                                  >
-                                    <path
-                                      fill="none"
-                                      d="M0 0h48v48H0V0z"
-                                    ></path>
-                                    <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
-                                  </svg>
-                                ) : (
-                                  <svg
-                                    width="18px"
-                                    height="18px"
-                                    viewBox="0 0 48 48"
-                                    focusable="false"
-                                    fill="#000000"
-                                  >
-                                    <path
-                                      fill="none"
-                                      d="M0 0h48v48H0V0z"
-                                    ></path>
-                                    <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
-                                  </svg>
-                                )}
-                              </button>
-                            </div>
-                            <div className="td-owner">
-                              <span>Owner</span>
-                            </div>
-                            <div className="td-modified">
-                              <span>Last modified</span>
-                            </div>
-                            <div className="td-size">
-                              <span>File size</span>
-                            </div>
+                    <div className="layout-view" id="quick-context-area">
+                      {folders.length > 0 && (
+                        <div
+                          className={
+                            is_gridType
+                              ? "layout-content folder"
+                              : "layout-content folder list"
+                          }
+                        >
+                          <div className="layout-header">
+                            <h2>Folders</h2>
                           </div>
-                        )}
-                      </div>
-                      <div className="main-content" id="quick-view">
-                        {is_gridType &&
-                          quick_files.map((item, i) => (
-                            <div className="guesture">
-                              <FileViews
+                          <div className="main-content" id="folder-view">
+                            {folders.map((item, i) => (
+                              <animated.div
+                                {...bind()}
+                                className={
+                                  selected_folder &&
+                                    item.id === selected_folder.id
+                                    ? "guesture active"
+                                    : "guesture"
+                                }
+                                data-value="guesture"
                                 key={i}
-                                path={item.path}
-                                type={item.content_type}
-                                name={item.name}
-                                id={item.id}
-                              />
+                              >
+                                <FolderViews
+                                  name={item.name}
+                                  id={item.id}
+                                  onHandleSide={onHandleMobileSideOpen}
+                                />
+                              </animated.div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      <div className="layout-content quick">
+                        <div className="layout-header">
+                          {is_gridType && <h2>Files</h2>}
+                          {!is_gridType && (
+                            <div className="list-tool">
+                              <div className="td-name">
+                                <span>Name</span>
+                                <button
+                                  class="direction"
+                                  onClick={handleSortOrder}
+                                >
+                                  {order_desc ? (
+                                    <svg
+                                      width="18px"
+                                      height="18px"
+                                      viewBox="0 0 48 48"
+                                      focusable="false"
+                                      fill="#000000"
+                                    >
+                                      <path
+                                        fill="none"
+                                        d="M0 0h48v48H0V0z"
+                                      ></path>
+                                      <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
+                                    </svg>
+                                  ) : (
+                                      <svg
+                                        width="18px"
+                                        height="18px"
+                                        viewBox="0 0 48 48"
+                                        focusable="false"
+                                        fill="#000000"
+                                      >
+                                        <path
+                                          fill="none"
+                                          d="M0 0h48v48H0V0z"
+                                        ></path>
+                                        <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
+                                      </svg>
+                                    )}
+                                </button>
+                              </div>
+                              <div className="td-owner">
+                                <span>Owner</span>
+                              </div>
+                              <div className="td-modified">
+                                <span>Last modified</span>
+                              </div>
+                              <div className="td-size">
+                                <span>File size</span>
+                              </div>
                             </div>
-                          ))}
-                        {!is_gridType && (
-                          <div className="list-group">
-                            {quick_files.map((item, i) => (
+                          )}
+                        </div>
+                        <div className="main-content" id="quick-view">
+                          {is_gridType &&
+                            quick_files.map((item, i) => (
                               <div className="guesture">
-                                <ListViews
+                                <FileViews
                                   key={i}
-                                  owner=""
-                                  last_modified={item.modified_date}
+                                  path={item.path}
                                   type={item.content_type}
                                   name={item.name}
-                                  size={item.size}
                                   id={item.id}
                                 />
                               </div>
                             ))}
-                          </div>
-                        )}
+                          {!is_gridType && (
+                            <div className="list-group">
+                              {quick_files.map((item, i) => (
+                                <div className="guesture">
+                                  <ListViews
+                                    key={i}
+                                    owner=""
+                                    last_modified={item.modified_date}
+                                    type={item.content_type}
+                                    name={item.name}
+                                    size={item.size}
+                                    id={item.id}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
+                      {isMobileOnly && (
+                        <a
+                          className="mobile-btn-add"
+                          onClick={onHandleMobilePopupOpen}
+                        />
+                      )}
                     </div>
-                    {isMobileOnly && (
-                      <a
-                        className="mobile-btn-add"
-                        onClick={onHandleMobilePopupOpen}
-                      />
-                    )}
-                  </div>
-                )}
+                  )}
               </div>
               {isMobileOnly && (
                 <React.Fragment>
@@ -1521,16 +1622,16 @@ export const Drive = (props) => {
                                 />
                               </div>
                             ) : (
-                              <div className="image">
-                                <img
-                                  src={matchImageResource16({
-                                    type: selected_file.content_type,
-                                  })}
-                                  alt={selected_file.name}
-                                  className="icon"
-                                />
-                              </div>
-                            )}
+                                <div className="image">
+                                  <img
+                                    src={matchImageResource16({
+                                      type: selected_file.content_type,
+                                    })}
+                                    alt={selected_file.name}
+                                    className="icon"
+                                  />
+                                </div>
+                              )}
                             <h3>{selected_file.name}</h3>
                           </React.Fragment>
                         )}
@@ -1667,22 +1768,22 @@ export const Drive = (props) => {
                   </MenuItem>
                 </React.Fragment>
               ) : (
-                <React.Fragment>
-                  <MenuItem data={{ foo: "download" }} onClick={handleClick}>
-                    <Icon name="cloud download" /> Download
+                  <React.Fragment>
+                    <MenuItem data={{ foo: "download" }} onClick={handleClick}>
+                      <Icon name="cloud download" /> Download
                   </MenuItem>
-                </React.Fragment>
-              )}
+                  </React.Fragment>
+                )}
             </ContextMenu>
           </ContextMenuTrigger>
         </div>
       ) : (
-        <Segment className="page-loader">
-          <Dimmer active inverted>
-            <Loader size="large"></Loader>
-          </Dimmer>
-        </Segment>
-      )}
+          <Segment className="page-loader">
+            <Dimmer active inverted>
+              <Loader size="large"></Loader>
+            </Dimmer>
+          </Segment>
+        )}
     </Layout>
   );
 };

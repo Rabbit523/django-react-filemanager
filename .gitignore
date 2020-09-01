@@ -7,3 +7,5 @@ build
 static
 package-lock.jsonvenv/
 venv/*
+.vscode
+settings.json
