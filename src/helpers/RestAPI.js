@@ -78,6 +78,24 @@ export const completeMultiUpload = async (file, directory, parts, uploadId, type
   }
 };
 
+export const completeFolderUpload = async (directory, parentId) => {
+
+  var formData = new FormData();
+  formData.append('parentId', parentId);
+  formData.append("token", localStorage.getItem("token"));
+  formData.append("directory", directory);
+
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/completeFolderUpload/`, formData);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+
 export const getMultiPartUploadId = async (file, directory) => {
 
   var formData = new FormData();

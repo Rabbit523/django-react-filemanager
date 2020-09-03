@@ -37,7 +37,8 @@ import {
   getSignedPostUrl,
   getMultiPartUploadId,
   uploadChunk,
-  completeMultiUpload
+  completeMultiUpload,
+  completeFolderUpload
 } from "../helpers/RestAPI";
 import { imageGroup128, imageGroup16 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
@@ -489,29 +490,107 @@ export const Drive = (props) => {
   const handleChangeFolder = async (e) => {
     var formData = new FormData();
     var directory = "";
+    var file_arr = [];
+
+    let overLimit = false;
     Object.values(e.target.files).forEach((file) => {
-      formData.append("file", file);
+      if (file.size > LIMIT) {
+        toast.dark(
+          <CustomToast
+            text="The size is too big and it cannot be uploaded"
+            type="error"
+          />,
+          {
+            position: toast.POSITION.TOP_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
+        overLimit = true;
+      }
+      file.uploaded = false;
+      file_arr.push(file);
       directory = file.webkitRelativePath;
     });
-    formData.append("directory", directory.split("/")[0]);
-    formData.append("parent_id", 0);
+    if (overLimit) return;
+
     var arr = [];
     arr.push({
       name: directory.split("/")[0],
       count: e.target.files.length,
       uploaded: false,
     });
+
     setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
     setFileCount(file_count + 1);
     setUploadingModal(true);
     setUploaded(false);
-    uploadFolder(formData).then((res) => {
-      const arr = [];
-      arr.push(res);
-      setFolders((folders) => folders.concat(arr));
-      setUploaded(true);
-      setFileCount(0);
-    });
+
+    let response = [];
+    for (let file of file_arr) {
+
+      if (file.size < CHUNK_LIMIT) {
+        var formData = new FormData;
+        formData.append('file', file);
+        formData.append('directory', directory.split("/")[0]);
+        const fileResponse = await uploadFile(formData);
+        response.push(fileResponse.data);
+      }
+      else {
+        const chunkCounts = calculateChunks(file);
+        let partNo = 1;
+        const res = await getMultiPartUploadId(file.name, directory.split("/")[0]);
+        const mpuId = res.data.data.mpu_id;
+        let chunks = [];
+        let _offset = 0;
+        while (partNo <= chunkCounts) {
+          let readLength = CHUNK_SIZE;
+          if (file.size - _offset - CHUNK_SIZE < CHUNK_LIMIT) {
+            readLength = file.size - _offset;
+          }
+          var blob = file.slice(_offset, readLength + _offset);
+          chunks.push({
+            'file': file.name,
+            'type': file.type,
+            'size': file.size,
+            'mpuId': mpuId,
+            'partNo': partNo,
+            'directory': directory.split("/")[0],
+            'data': blob
+          });
+          _offset += readLength;
+          partNo++;
+        }
+        const fileResponse = await uploadChunks(chunks);
+        response.push(fileResponse.data);
+      }
+    }
+    const res = await completeFolderUpload(directory.split("/")[0], 0);
+    // complete folder upload
+    const res_arr = [];
+    res_arr.push(res);
+    setFolders((folders) => folders.concat(res_arr));
+    setUploaded(true);
+    setFileCount(0);
+    if (isMobileOnly) {
+      toast.dark(
+        <CustomToast
+          text="All pending uploads have completed"
+          type="upload"
+        />,
+        {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom",
+        }
+      );
+    }
   };
 
   const closeModal = () => {

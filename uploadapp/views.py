@@ -122,55 +122,12 @@ def uploadfile_to_s3(file, directory, username):
         return http_response
 
 
-# class FileUploadView(APIView):
-#     parser_classes = [MultiPartParser, FormParser]
-
-#     def post(self, request, *args, **kwargs):
-#         files = dict((request.data).lists())['file']
-#         directory = request.data['directory']
-#         if (directory is None) or (directory == 'null'):
-#             directory = None
-#         else:
-#             directory = request.data['directory']
-#         token = request.data['token']
-#         user = Token.objects.get(key=token).user
-#         flag = 1
-#         arr = []
-#         for file in files:
-#             response = upload_multipart(file, directory, user.username)
-#             # response = uploadfile_to_s3(file, directory, user.username)
-#             if response == 200:
-#                 if directory is None:
-#                     url = 'https://s3.{}.amazonaws.com/{}/{}/{}'.format(
-#                         aws_config.REGION, aws_config.BUCKET_NAME,
-#                         user.username, file.name)
-#                 else:
-#                     url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
-#                         aws_config.REGION, aws_config.BUCKET_NAME,
-#                         user.username, directory, file.name)
-#                 file_instance = File.objects.create(
-#                     path=url,
-#                     content_type=file.content_type,
-#                     user=user,
-#                     name=file.name,
-#                     directory=directory,
-#                     size=file.size
-#                 )
-#                 arr.append(model_to_dict(file_instance))
-#             else:
-#                 flag = 0
-#         if flag == 1:
-#             return Response(arr, status=status.HTTP_200_OK)
-#         else:
-#             return Response(arr, status=status.HTTP_400_BAD_REQUEST)
-
-
 class FileUploadView(APIView):
     parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request, *args, **kwargs):
         file = request.data['file']
-        directory = request.data['directory']
+        directory = request.data.get('directory', None)
         if (directory is None) or (directory == 'null'):
             directory = None
         else:
@@ -178,7 +135,7 @@ class FileUploadView(APIView):
         token = request.data['token']
         user = Token.objects.get(key=token).user
         response = uploadfile_to_s3(file, directory, user.username)
-        if response == 200:
+        if response.status_code == 200 or response.status_code == 204:
             if directory is None:
                 url = 'https://s3.{}.amazonaws.com/{}/{}/{}'.format(
                     aws_config.REGION, aws_config.BUCKET_NAME,
@@ -297,11 +254,10 @@ class FileSignedUrlView(APIView):
         mpu_id = request.data['mpuId']
         user = Token.objects.get(key=token).user
 
-        directory = request.data['directory']
+        directory = request.data.get('directory', None)
         if (directory is None) or (directory == 'null'):
             path = '{}/{}'.format(user.username, file_name)
         else:
-            directory = request.data['directory']
             path = '{}/{}/{}'.format(user.username, directory, file_name)
 
         s3_client = boto3.client(
@@ -354,11 +310,10 @@ class InitiateUploadView(APIView):
 
         file_name = request.data['file']
 
-        directory = request.data['directory']
+        directory = request.data.get('directory', None)
         if (directory is None) or (directory == 'null'):
             path = '{}/{}'.format(user.username, file_name)
         else:
-            directory = request.data['directory']
             path = '{}/{}/{}'.format(user.username, directory, file_name)
 
         mpus = s3_client.list_multipart_uploads(Bucket=aws_config.BUCKET_NAME)
@@ -440,3 +395,35 @@ class CompleteUploadView(APIView):
         except Exception as e:
             print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class CompleteFolderUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+        parent_id = int(request.data['parentId'])
+
+        dir_arr = list()
+        dir_arr.append(request.data['directory'])
+        while parent_id != 0:
+            instance = Folder.objects.filter(
+                user=user).filter(id=parent_id).first()
+            temp = model_to_dict(instance)
+            parent_id = temp['parent']
+            dir_arr.append(temp['name'])
+
+        length = len(dir_arr)
+        directory = ""
+        for i in range(length - 1, -1, -1):
+            directory += dir_arr[i]
+            if i != 0:
+                directory += '/'
+
+        folder_instance = Folder.objects.create(
+            name=request.data['directory'], user=user,
+            parent=request.data['parentId'])
+        res_json = model_to_dict(folder_instance)
+        return Response(res_json, status=status.HTTP_200_OK)
