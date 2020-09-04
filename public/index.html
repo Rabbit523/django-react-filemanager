@@ -1,29 +1,31 @@
 <!DOCTYPE html>
-{% load static %}
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-    <meta name="theme-color" content="#000000">
-    <link rel="shortcut icon" href="{% static '/logo_transparent.png' %}" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json">
-    <title>SAMURAI Drive</title>
-  </head>
-  <body>
-    <noscript>
-      You need to enable JavaScript to run this app.
-    </noscript>
-    <div id="root"></div>
-    <script>
-      if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
-        var viewportmeta = document.querySelector('meta[name="viewport"]');
-        if (viewportmeta) {
-          viewportmeta.content = 'width=device-width, minimum-scale=1.0, maximum-scale=1.0, initial-scale=1.0';
-          document.body.addEventListener('gesturestart', function () {
-            viewportmeta.content = 'width=device-width, minimum-scale=0.25, maximum-scale=1.6';
-          }, false);
-        }
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="theme-color" content="#000000">
+  <link rel="shortcut icon" href="static/logo_transparent.png" />
+  <link rel="manifest" href="%PUBLIC_URL%/manifest.json">
+  <title>SAMURAI Drive</title>
+</head>
+
+<body>
+  <noscript>
+    You need to enable JavaScript to run this app.
+  </noscript>
+  <div id="root"></div>
+  <script>
+    if (navigator.userAgent.match(/iPhone/i) || navigator.userAgent.match(/iPad/i)) {
+      var viewportmeta = document.querySelector('meta[name="viewport"]');
+      if (viewportmeta) {
+        viewportmeta.content = 'width=device-width, minimum-scale=1.0, maximum-scale=1.0, initial-scale=1.0';
+        document.body.addEventListener('gesturestart', function () {
+          viewportmeta.content = 'width=device-width, minimum-scale=0.25, maximum-scale=1.6';
+        }, false);
       }
-    </script>
-  </body>
+    }
+  </script>
+</body>
+
 </html>
