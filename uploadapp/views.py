@@ -77,11 +77,14 @@ def create_presigned_post(object_name, directory, filetype, username):
     s3_client = boto3.client(
         's3',
         aws_config.REGION,
-        config=Config(s3={'addressing_style': 'path'}),
+        config=Config(
+            s3={'addressing_style': 'path'},
+            signature_version='s3v4'
+        ),
         aws_access_key_id=aws_config.AWS_ACCESS_KEY_ID,
         aws_secret_access_key=aws_config.AWS_ACCESS_KEY,
     )
-    if directory is None:
+    if (directory is None) or (directory == 'null'):
         path = '{}/{}'.format(username, object_name)
     else:
         path = '{}/{}/{}'.format(username, directory, object_name)
@@ -247,18 +250,29 @@ class FileByDirectoryGetView(APIView):
 class FileSignedUrlView(APIView):
 
     def post(self, request, *args, **kwargs):
-        # files = dict((request.data).lists())['file']
         file_name = request.data['file']
         token = request.data['token']
-        part_no = request.data['partNo']
-        mpu_id = request.data['mpuId']
+        part_no = request.data.get('partNo', None)
+        mpu_id = request.data.get('mpuId', None)
+        filetype = request.data.get('filetype', None)
         user = Token.objects.get(key=token).user
+
+        client_method = request.data.get('clientMethod', None)
 
         directory = request.data.get('directory', None)
         if (directory is None) or (directory == 'null'):
             path = '{}/{}'.format(user.username, file_name)
         else:
             path = '{}/{}/{}'.format(user.username, directory, file_name)
+
+        params = {
+            'Bucket': aws_config.BUCKET_NAME,
+            'Key': path,
+        }
+        if mpu_id:
+            params['UploadId'] = mpu_id
+        if part_no:
+            params['PartNumber'] = int(part_no)
 
         s3_client = boto3.client(
             's3',
@@ -271,19 +285,21 @@ class FileSignedUrlView(APIView):
         )
 
         try:
-            signed_url = s3_client.generate_presigned_url(
-                ClientMethod='upload_part',
-                Params={
-                    'Bucket': aws_config.BUCKET_NAME,
-                    'Key': path,
-                    'UploadId': mpu_id,
-                    'PartNumber': int(part_no),
-                },
-                ExpiresIn=3600,
-            )
-            return_data = {
-                "signed_url": signed_url
-            }
+            if client_method == 'put_object':
+                signed_url = create_presigned_post(
+                    file_name, directory, filetype, user.username)
+                return_data = {
+                    "signed_url": signed_url
+                }
+            elif client_method == 'upload_part':
+                signed_url = s3_client.generate_presigned_url(
+                    ClientMethod=client_method,
+                    Params=params,
+                    ExpiresIn=3600,
+                )
+                return_data = {
+                    "signed_url": signed_url
+                }
 
             return Response(return_data, status=status.HTTP_200_OK)
         except Exception as e:
@@ -427,3 +443,41 @@ class CompleteFolderUploadView(APIView):
             parent=request.data['parentId'])
         res_json = model_to_dict(folder_instance)
         return Response(res_json, status=status.HTTP_200_OK)
+
+
+class CompleteFileUploadView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+        file = request.data['file']
+        content_type = request.data['type']
+        size = request.data['size']
+        directory = request.data.get('directory', None)
+        if (directory is None) or (directory == 'null'):
+            directory = None
+        else:
+            directory = request.data['directory']
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+        if directory is None:
+            url = 'https://s3.{}.amazonaws.com/{}/{}/{}'.format(
+                aws_config.REGION, aws_config.BUCKET_NAME,
+                user.username, file)
+        else:
+            url = 'https://s3.{}.amazonaws.com/{}/{}/{}/{}'.format(
+                aws_config.REGION, aws_config.BUCKET_NAME,
+                user.username, directory, file)
+        try:
+            file_instance = File.objects.create(
+                path=url,
+                content_type=content_type,
+                user=user,
+                name=file,
+                directory=directory,
+                size=size
+            )
+            return Response(model_to_dict(file_instance),
+                            status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+            return Response(status=status.HTTP_400_BAD_REQUEST)

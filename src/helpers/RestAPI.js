@@ -44,9 +44,42 @@ export const getSignedPostUrl = async (formData) => {
   }
 };
 
-export const uploadChunk = async (url, chunk) => {
+export const uploadChunk = async (url, chunk, index, callback) => {
+
+  let config = {
+    onUploadProgress: progressEvent => {
+      callback(progressEvent.loaded, index);
+    },
+  };
+
   try {
-    const result = await axios.put(url, chunk);
+    const result = await axios.put(url, chunk, config);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+
+};
+
+export const uploadSingleFile = async (data, file, callback) => {
+
+  const formData = new FormData();
+  Object.keys(data.fields).forEach(key => {
+    formData.append(key, data.fields[key]);
+  });
+
+  // Actual file has to be appended last.
+  formData.append("file", file);
+
+  let config = {
+    onUploadProgress: progressEvent => {
+      callback(progressEvent.loaded, 0);
+    },
+  };
+
+  try {
+    const result = await axios.post(data.url, formData, config);
     return { error: null, data: result };
   } catch (error) {
     console.log(error);
@@ -58,7 +91,6 @@ export const uploadChunk = async (url, chunk) => {
 export const completeMultiUpload = async (file, directory, parts, uploadId, type, size) => {
 
   var formData = new FormData();
-  // formData.append('parts', parts);
   formData.append('uploadId', uploadId);
   formData.append("token", localStorage.getItem("token"));
   formData.append("file", file);
@@ -77,6 +109,27 @@ export const completeMultiUpload = async (file, directory, parts, uploadId, type
     return { error: error, data: null };
   }
 };
+
+export const completeUpload = async (file, directory, type, size) => {
+
+  var formData = new FormData();
+  formData.append("token", localStorage.getItem("token"));
+  formData.append("file", file);
+  formData.append("type", type);
+  formData.append("size", size);
+  formData.append("directory", directory);
+
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/complete_file_upload/`, formData);
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+
 
 export const completeFolderUpload = async (directory, parentId) => {
 

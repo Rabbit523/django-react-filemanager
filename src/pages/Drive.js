@@ -30,15 +30,15 @@ import { useEventListener } from "../helpers/CustomHook";
 import {
   getFiles,
   uploadFile,
-  uploadFiles,
   createFolder,
-  uploadFolder,
   getFolders,
   getSignedPostUrl,
   getMultiPartUploadId,
   uploadChunk,
   completeMultiUpload,
-  completeFolderUpload
+  completeFolderUpload,
+  completeUpload,
+  uploadSingleFile
 } from "../helpers/RestAPI";
 import { imageGroup128, imageGroup16 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
@@ -54,6 +54,7 @@ import {
 } from "../containers/Views";
 import Layout from "../containers/Layout";
 import Axios from "axios";
+import { array } from "prop-types";
 
 const CustomToast = ({ closeToast, text, type }) => {
   const onHandleCloseToast = () => {
@@ -88,6 +89,7 @@ export const Drive = (props) => {
   const [order_desc, setOrder] = useState(true);
   const [file_count, setFileCount] = useState(0);
   const [total_file_count, setTotalFileCount] = useState(0);
+  const [upload_percent, setUploadPercent] = useState(0);
   const [uploading_files, setUploadingFiles] = useState([]);
   const [uploading_folders, setUploadingFolders] = useState([]);
   const [files, setFiles] = useState([]);
@@ -339,16 +341,23 @@ export const Drive = (props) => {
     });
   };
 
-  const waitUpload = async (chunk) => {
+  let loadedOffset = 0;
+  const waitUpload = async (chunk, index, callback) => {
     let formData = new FormData();
     formData.append('file', chunk.file);
     formData.append('mpuId', chunk.mpuId);
     formData.append('partNo', chunk.partNo);
     formData.append('directory', chunk.directory);
+    formData.append('clientMethod', 'upload_part');
 
     const res = await getSignedPostUrl(formData);
-    const response = await uploadChunk(res.data.data.signed_url, chunk.data);
 
+    const response = await uploadChunk(
+      res.data.data.signed_url,
+      chunk.data,
+      index,
+      callback
+    );
     let etag = response.data.headers['etag'];
     return {
       'ETag': etag.substring(1, etag.length - 1),
@@ -356,11 +365,43 @@ export const Drive = (props) => {
     };
   };
 
-  const uploadChunks = async (chunks) => {
+  const uploadMinorFile = async (file_data, totalFileSize) => {
+
+    var formData = new FormData;
+    formData.append('file', file_data.file);
+    formData.append('clientMethod', 'put_object');
+    formData.append('filetype', file_data.file.type);
+    formData.append('directory', file_data.directory);
+
+    let progress = new Array(1);
+    const onHandleProgress = (loaded, index) => {
+      progress[index] = loaded;
+      const sum = progress.reduce((a, b) => a + b, 0);
+      console.log((loadedOffset + sum) / totalFileSize * 100);
+      setUploadPercent(parseFloat((loadedOffset + sum) / totalFileSize * 100).toFixed(0));
+    };
+
+    const res = await getSignedPostUrl(formData);
+    const fileResponse = await uploadSingleFile(res.data.data.signed_url, file_data.file, onHandleProgress);
+    console.log(fileResponse);
+
+    const complete = await completeUpload(file_data.file.name, file_data.directory, file_data.file.type, file_data.file.size);
+    return complete.data;
+  }
+
+  const uploadChunks = async (chunks, totalFileSize) => {
     let parts = [];
 
     let chunk = chunks[0];
-    const promises = chunks.map(waitUpload);
+
+    let progress = new Array(chunks.length);
+    const onHandleProgress = (loaded, index) => {
+      progress[index] = loaded;
+      const sum = progress.reduce((a, b) => a + b, 0);
+      console.log((loadedOffset + sum) / totalFileSize * 100);
+      setUploadPercent(parseFloat((loadedOffset + sum) / totalFileSize * 100).toFixed(0));
+    };
+    const promises = chunks.map((c, index) => waitUpload(c, index, onHandleProgress));
     parts = await Promise.all(promises);
 
     const complete = await completeMultiUpload(chunk.file, chunk.directory, parts, chunk.mpuId, chunk.type, chunk.size);
@@ -377,6 +418,7 @@ export const Drive = (props) => {
     var file_arr = [];
 
     let overLimit = false;
+    let totalFileSize = 0;
     Object.values(e.target.files).forEach((file) => {
       if (file.size > LIMIT) {
         toast.dark(
@@ -396,6 +438,7 @@ export const Drive = (props) => {
         overLimit = true;
       }
       file.uploaded = false;
+      totalFileSize += file.size;
       file_arr.push(file);
     });
     if (overLimit) return;
@@ -413,9 +456,13 @@ export const Drive = (props) => {
     for (let file of file_arr) {
 
       if (file.size < CHUNK_LIMIT) {
-        var formData = new FormData;
-        formData.append('file', file);
-        const fileResponse = await uploadFile(formData);
+
+        const data = {
+          'file': file,
+          'directory': null
+        };
+
+        const fileResponse = await uploadMinorFile(data, totalFileSize);
         response.push(fileResponse.data);
       }
       else {
@@ -443,10 +490,13 @@ export const Drive = (props) => {
           _offset += readLength;
           partNo++;
         }
-        const fileResponse = await uploadChunks(chunks);
+        const fileResponse = await uploadChunks(chunks, totalFileSize);
         response.push(fileResponse.data);
       }
+      loadedOffset += file.size;
     }
+    loadedOffset = 0;
+
     isMobileOnly && setUploadingFiles([]);
     let res_arr = [...files];
     response.forEach((file) => {
@@ -455,6 +505,7 @@ export const Drive = (props) => {
     setFiles(res_arr);
     setUploaded(true);
     setFileCount(0);
+    setUploadPercent(0);
     if (isMobileOnly) {
       toast.dark(
         <CustomToast
@@ -493,6 +544,7 @@ export const Drive = (props) => {
     var file_arr = [];
 
     let overLimit = false;
+    let totalFileSize = 0;
     Object.values(e.target.files).forEach((file) => {
       if (file.size > LIMIT) {
         toast.dark(
@@ -513,6 +565,7 @@ export const Drive = (props) => {
       }
       file.uploaded = false;
       file_arr.push(file);
+      totalFileSize += file.size;
       directory = file.webkitRelativePath;
     });
     if (overLimit) return;
@@ -533,10 +586,12 @@ export const Drive = (props) => {
     for (let file of file_arr) {
 
       if (file.size < CHUNK_LIMIT) {
-        var formData = new FormData;
-        formData.append('file', file);
-        formData.append('directory', directory.split("/")[0]);
-        const fileResponse = await uploadFile(formData);
+        const data = {
+          'file': file,
+          'directory': directory.split("/")[0]
+        };
+
+        const fileResponse = await uploadMinorFile(data, totalFileSize);
         response.push(fileResponse.data);
       }
       else {
@@ -564,10 +619,12 @@ export const Drive = (props) => {
           _offset += readLength;
           partNo++;
         }
-        const fileResponse = await uploadChunks(chunks);
+        const fileResponse = await uploadChunks(chunks, totalFileSize);
         response.push(fileResponse.data);
       }
+      loadedOffset += file.size;
     }
+    loadedOffset = 0;
     const res = await completeFolderUpload(directory.split("/")[0], 0);
     // complete folder upload
     const res_arr = [];
@@ -575,6 +632,7 @@ export const Drive = (props) => {
     setFolders((folders) => folders.concat(res_arr));
     setUploaded(true);
     setFileCount(0);
+    setUploadPercent(0);
     if (isMobileOnly) {
       toast.dark(
         <CustomToast
@@ -840,7 +898,7 @@ export const Drive = (props) => {
               <div className="loading-status">
                 {!is_uploaded && (
                   <span>
-                    Uploading {file_count} {file_count > 1 ? "items" : "item"}
+                    Uploading {file_count} {file_count > 1 ? "items" : "item"} - {upload_percent}% completed
                   </span>
                 )}
                 {is_uploaded && (
