@@ -29,10 +29,19 @@ import { useEventListener } from "../helpers/CustomHook";
 import {
   getFilesByDirectory,
   uploadFiles,
-  getFolders,
-  createFolder,
   uploadFolder,
   getAllFolders,
+  getFiles,
+  uploadFile,
+  createFolder,
+  getFolders,
+  getSignedPostUrl,
+  getMultiPartUploadId,
+  uploadChunk,
+  completeMultiUpload,
+  completeFolderUpload,
+  completeUpload,
+  uploadSingleFile
 } from "../helpers/RestAPI";
 import { imageGroup16 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
@@ -81,6 +90,7 @@ export const Directory = (props) => {
   const [order_desc, setOrder] = useState(true);
   const [file_count, setFileCount] = useState(0);
   const [total_file_count, setTotalFileCount] = useState(0);
+  const [upload_percent, setUploadPercent] = useState(0);
   const [uploading_files, setUploadingFiles] = useState([]);
   const [uploading_folders, setUploadingFolders] = useState([]);
   const [files, setFiles] = useState([]);
@@ -91,6 +101,10 @@ export const Directory = (props) => {
   const [cur_dir, setCurrentDirectory] = useState("");
   const [routeTree, setRouteTree] = useState([]);
   const [mobileCurRoute, setMobileCurRoute] = useState({});
+
+  const CHUNK_SIZE = Math.pow(1024, 3);
+  const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
+  const LIMIT = 6 * Math.pow(1024, 3);
 
   const validateURL = async () => {
     const folders = await getAllFolders();
@@ -173,9 +187,9 @@ export const Directory = (props) => {
     if (props.location.state) {
       cur_dir && getFilesByDirectory(cur_dir).then((res) => {
         if (uploading_files.length > 0) {
-          for (let index = 0; index < uploading_files.length; index ++) {
+          for (let index = 0; index < uploading_files.length; index++) {
             for (let i = res.length - 1; i >= 0; i--) {
-              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+              if (res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
                 uploading_files[index].uploaded = true;
                 break;
               }
@@ -186,9 +200,9 @@ export const Directory = (props) => {
         setFiles(res);
         getFolders(props.location.state.id).then((response) => {
           if (uploading_folders.length > 0) {
-            for (let index = 0; index < uploading_folders.length; index ++) {
+            for (let index = 0; index < uploading_folders.length; index++) {
               for (let i = response.length - 1; i >= 0; i--) {
-                if(response[i].name === uploading_folders[index].name) {
+                if (response[i].name === uploading_folders[index].name) {
                   uploading_folders[index].uploaded = true;
                   break;
                 }
@@ -203,9 +217,9 @@ export const Directory = (props) => {
     } else {
       cur_dir && getFilesByDirectory(cur_dir).then((res) => {
         if (uploading_files.length > 0) {
-          for (let index = 0; index < uploading_files.length; index ++) {
+          for (let index = 0; index < uploading_files.length; index++) {
             for (let i = res.length - 1; i >= 0; i--) {
-              if(res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
+              if (res[i].name === uploading_files[index].name && parseInt(res[i].size) === parseInt(uploading_files[index].size)) {
                 uploading_files[index].uploaded = true;
                 break;
               }
@@ -217,9 +231,9 @@ export const Directory = (props) => {
         directoryToID(cur_dir).then((id) => {
           getFolders(id).then((response) => {
             if (uploading_folders.length > 0) {
-              for (let index = 0; index < uploading_folders.length; index ++) {
+              for (let index = 0; index < uploading_folders.length; index++) {
                 for (let i = response.length - 1; i >= 0; i--) {
-                  if(response[i].name === uploading_folders[index].name) {
+                  if (response[i].name === uploading_folders[index].name) {
                     uploading_folders[index].uploaded = true;
                     break;
                   }
@@ -360,6 +374,82 @@ export const Directory = (props) => {
     }
   };
 
+  let loadedOffset = 0;
+  const waitUpload = async (chunk, index, callback) => {
+    let formData = new FormData();
+    formData.append('file', chunk.file);
+    formData.append('mpuId', chunk.mpuId);
+    formData.append('partNo', chunk.partNo);
+    formData.append('directory', chunk.directory);
+    formData.append('clientMethod', 'upload_part');
+
+    const res = await getSignedPostUrl(formData);
+
+    const response = await uploadChunk(
+      res.data.data.signed_url,
+      chunk.data,
+      index,
+      callback
+    );
+    let etag = response.data.headers['etag'];
+    return {
+      'ETag': etag.substring(1, etag.length - 1),
+      'PartNumber': chunk.partNo
+    };
+  };
+
+  const uploadMinorFile = async (file_data, totalFileSize) => {
+
+    var formData = new FormData;
+    formData.append('file', file_data.file);
+    formData.append('clientMethod', 'put_object');
+    formData.append('filetype', file_data.file.type);
+    formData.append('directory', file_data.directory);
+
+    let progress = new Array(1);
+    const onHandleProgress = (loaded, index) => {
+      if (loaded > file_data.file.size) {
+        loaded = file_data.file.size;
+      }
+      progress[index] = loaded;
+      const sum = progress.reduce((a, b) => a + b, 0);
+      console.log((loadedOffset + sum) / totalFileSize * 100);
+      setUploadPercent(parseFloat((loadedOffset + sum) / totalFileSize * 100).toFixed(0));
+    };
+
+    const res = await getSignedPostUrl(formData);
+    const fileResponse = await uploadSingleFile(res.data.data.signed_url, file_data.file, onHandleProgress);
+    console.log(fileResponse);
+
+    const complete = await completeUpload(file_data.file.name, file_data.directory, file_data.file.type, file_data.file.size);
+    return complete.data;
+  }
+
+  const uploadChunks = async (chunks, totalFileSize) => {
+    let parts = [];
+
+    let chunk = chunks[0];
+
+    let progress = new Array(chunks.length);
+    const onHandleProgress = (loaded, index) => {
+      progress[index] = loaded;
+      const sum = progress.reduce((a, b) => a + b, 0);
+      console.log((loadedOffset + sum) / totalFileSize * 100);
+      setUploadPercent(parseFloat((loadedOffset + sum) / totalFileSize * 100).toFixed(0));
+    };
+    const promises = chunks.map((c, index) => waitUpload(c, index, onHandleProgress));
+    parts = await Promise.all(promises);
+
+    const complete = await completeMultiUpload(chunk.file, chunk.directory, parts, chunk.mpuId, chunk.type, chunk.size);
+    return complete.data;
+  };
+
+  const calculateChunks = (file) => {
+    var minChunksCount = parseInt(file.size / CHUNK_SIZE);
+    var result = file.size % CHUNK_SIZE < CHUNK_LIMIT ? minChunksCount : minChunksCount + 1;
+    return result;
+  };
+
   const onHandleUploadFileSelect = (file) => {
     const selected_file = files.find((ele, index) => ele.name === file.name);
     setSelectedFile(selected_file);
@@ -373,14 +463,34 @@ export const Directory = (props) => {
     });
   };
   const handleChangeFile = async (e) => {
-    var formData = new FormData();
     var file_arr = [];
+
+    let overLimit = false;
+    let totalFileSize = 0;
     Object.values(e.target.files).forEach((file) => {
-      formData.append("file", file);
+      if (file.size > LIMIT) {
+        toast.dark(
+          <CustomToast
+            text="The size is too big and it cannot be uploaded"
+            type="error"
+          />,
+          {
+            position: toast.POSITION.TOP_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
+        overLimit = true;
+      }
       file.uploaded = false;
+      totalFileSize += file.size;
       file_arr.push(file);
     });
-    formData.append("directory", cur_dir);
+    if (overLimit) return;
+
     setUploadingFiles((uploading_files) => uploading_files.concat(file_arr));
     setFileCount(file_count + e.target.files.length);
     if (isMobileOnly) {
@@ -389,32 +499,77 @@ export const Directory = (props) => {
       setUploadingModal(true);
     }
     setUploaded(false);
-    uploadFiles(formData).then((response) => {
-      isMobileOnly && setUploadingFiles([]);
-      let res_arr = [...files];
-      response.forEach((file) => {
-        res_arr.push(file);
-      });
-      setFiles(res_arr);
-      setUploaded(true);
-      setFileCount(0);
-      if (isMobileOnly) {
-        toast.dark(
-          <CustomToast
-            text="All pending uploads have completed"
-            type="upload"
-          />,
-          {
-            position: toast.POSITION.BOTTOM_CENTER,
-            hideProgressBar: true,
-            closeOnClick: false,
-            pauseOnHover: true,
-            draggable: true,
-            className: "toast-custom",
-          }
-        );
+
+    let response = [];
+    for (let file of file_arr) {
+
+      if (file.size < CHUNK_LIMIT) {
+
+        const data = {
+          'file': file,
+          'directory': cur_dir
+        };
+
+        const fileResponse = await uploadMinorFile(data, totalFileSize);
+        response.push(fileResponse.data);
       }
+      else {
+        const chunkCounts = calculateChunks(file);
+        let partNo = 1;
+        const res = await getMultiPartUploadId(file.name, cur_dir);
+        const mpuId = res.data.data.mpu_id;
+        let chunks = [];
+        let _offset = 0;
+        while (partNo <= chunkCounts) {
+          let readLength = CHUNK_SIZE;
+          if (file.size - _offset - CHUNK_SIZE < CHUNK_LIMIT) {
+            readLength = file.size - _offset;
+          }
+          var blob = file.slice(_offset, readLength + _offset);
+          chunks.push({
+            'file': file.name,
+            'type': file.type,
+            'size': file.size,
+            'mpuId': mpuId,
+            'partNo': partNo,
+            'directory': cur_dir,
+            'data': blob
+          });
+          _offset += readLength;
+          partNo++;
+        }
+        const fileResponse = await uploadChunks(chunks, totalFileSize);
+        response.push(fileResponse.data);
+      }
+      loadedOffset += file.size;
+    }
+    loadedOffset = 0;
+
+    isMobileOnly && setUploadingFiles([]);
+    let res_arr = [...files];
+    response.forEach((file) => {
+      res_arr.push(file);
     });
+    setFiles(res_arr);
+    setUploaded(true);
+    setFileCount(0);
+    setUploadPercent(0);
+    if (isMobileOnly) {
+      toast.dark(
+        <CustomToast
+          text="All pending uploads have completed"
+          type="upload"
+        />,
+        {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom",
+        }
+      );
+    }
   };
 
   const onHandleUploadFolderSelect = (folder) => {
@@ -434,29 +589,116 @@ export const Directory = (props) => {
   const handleChangeFolder = async (e) => {
     var formData = new FormData();
     var directory = "";
+    var file_arr = [];
+
+    let overLimit = false;
+    let totalFileSize = 0;
     Object.values(e.target.files).forEach((file) => {
-      formData.append("file", file);
+      if (file.size > LIMIT) {
+        toast.dark(
+          <CustomToast
+            text="The size is too big and it cannot be uploaded"
+            type="error"
+          />,
+          {
+            position: toast.POSITION.TOP_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
+          }
+        );
+        overLimit = true;
+      }
+      file.uploaded = false;
+      file_arr.push(file);
+      totalFileSize += file.size;
       directory = file.webkitRelativePath;
     });
-    formData.append("directory", directory.split("/")[0]);
     formData.append("parent_id", props.location.state.id);
+
+    if (overLimit) return;
+
     var arr = [];
     arr.push({
       name: directory.split("/")[0],
       count: e.target.files.length,
       uploaded: false,
     });
+
     setUploadingFolders((uploading_folders) => uploading_folders.concat(arr));
     setFileCount(file_count + 1);
     setUploadingModal(true);
     setUploaded(false);
-    uploadFolder(formData).then((res) => {
-      const arr = [];
-      arr.push(res);
-      setFolders((folders) => folders.concat(arr));
-      setUploaded(true);
-      setFileCount(0);
-    });
+
+    let response = [];
+    for (let file of file_arr) {
+
+      if (file.size < CHUNK_LIMIT) {
+        const data = {
+          'file': file,
+          'directory': directory.split("/")[0]
+        };
+
+        const fileResponse = await uploadMinorFile(data, totalFileSize);
+        response.push(fileResponse.data);
+      }
+      else {
+        const chunkCounts = calculateChunks(file);
+        let partNo = 1;
+        const res = await getMultiPartUploadId(file.name, directory.split("/")[0]);
+        const mpuId = res.data.data.mpu_id;
+        let chunks = [];
+        let _offset = 0;
+        while (partNo <= chunkCounts) {
+          let readLength = CHUNK_SIZE;
+          if (file.size - _offset - CHUNK_SIZE < CHUNK_LIMIT) {
+            readLength = file.size - _offset;
+          }
+          var blob = file.slice(_offset, readLength + _offset);
+          chunks.push({
+            'file': file.name,
+            'type': file.type,
+            'size': file.size,
+            'mpuId': mpuId,
+            'partNo': partNo,
+            'directory': directory.split("/")[0],
+            'data': blob
+          });
+          _offset += readLength;
+          partNo++;
+        }
+        const fileResponse = await uploadChunks(chunks, totalFileSize);
+        response.push(fileResponse.data);
+      }
+      loadedOffset += file.size;
+    }
+    loadedOffset = 0;
+    const res = await completeFolderUpload(directory.split("/")[0], props.location.state.id);
+    // complete folder upload
+    const res_arr = [];
+    res_arr.push(res);
+    setFolders((folders) => folders.concat(res_arr));
+    setUploaded(true);
+    setFileCount(0);
+    setUploadPercent(0);
+    if (isMobileOnly) {
+      toast.dark(
+        <CustomToast
+          text="All pending uploads have completed"
+          type="upload"
+        />,
+        {
+          position: toast.POSITION.BOTTOM_CENTER,
+          hideProgressBar: true,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          className: "toast-custom",
+        }
+      );
+    }
   };
 
   const closeModal = () => {
@@ -659,7 +901,7 @@ export const Directory = (props) => {
               <div className="loading-status">
                 {!is_uploaded && (
                   <span>
-                    Uploading {file_count} {file_count > 1 ? "items" : "item"}
+                    Uploading {file_count} {file_count > 1 ? "items" : "item"} - {upload_percent}% completed
                   </span>
                 )}
                 {is_uploaded && (
@@ -689,20 +931,20 @@ export const Directory = (props) => {
                           ></path>
                         </svg>
                       ) : (
-                        <svg
-                          x="0px"
-                          y="0px"
-                          width="14px"
-                          height="14px"
-                          viewBox="0 0 24 24"
-                          focusable="false"
-                        >
-                          <path
-                            fill="#FFFFFF"
-                            d="M2.83,18.83L12,9.66l9.17,9.17L24,16,12,4,0,16z"
-                          ></path>
-                        </svg>
-                      )}
+                          <svg
+                            x="0px"
+                            y="0px"
+                            width="14px"
+                            height="14px"
+                            viewBox="0 0 24 24"
+                            focusable="false"
+                          >
+                            <path
+                              fill="#FFFFFF"
+                              d="M2.83,18.83L12,9.66l9.17,9.17L24,16,12,4,0,16z"
+                            ></path>
+                          </svg>
+                        )}
                     </button>
                   }
                   position="bottom center"
@@ -759,37 +1001,37 @@ export const Directory = (props) => {
                             className="loading"
                           />
                         ) : (
-                          <div className="icon">
-                            <ReactHoverObserver>
-                              {({ isHovering }) => (
-                                <React.Fragment>
-                                  {isHovering ? (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      focusable="false"
-                                      onClick={() =>
-                                        onHandleUploadFileSelect(file)
-                                      }
-                                    >
-                                      <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      fill="#0F9D58"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                                    </svg>
-                                  )}
-                                </React.Fragment>
-                              )}
-                            </ReactHoverObserver>
-                          </div>
-                        )}
+                            <div className="icon">
+                              <ReactHoverObserver>
+                                {({ isHovering }) => (
+                                  <React.Fragment>
+                                    {isHovering ? (
+                                      <svg
+                                        width="24px"
+                                        height="24px"
+                                        viewBox="0 0 24 24"
+                                        focusable="false"
+                                        onClick={() =>
+                                          onHandleUploadFileSelect(file)
+                                        }
+                                      >
+                                        <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
+                                      </svg>
+                                    ) : (
+                                        <svg
+                                          width="24px"
+                                          height="24px"
+                                          viewBox="0 0 24 24"
+                                          fill="#0F9D58"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                        </svg>
+                                      )}
+                                  </React.Fragment>
+                                )}
+                              </ReactHoverObserver>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -827,37 +1069,37 @@ export const Directory = (props) => {
                             className="loading"
                           />
                         ) : (
-                          <div className="icon">
-                            <ReactHoverObserver>
-                              {({ isHovering }) => (
-                                <React.Fragment>
-                                  {isHovering ? (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      focusable="false"
-                                      onClick={() =>
-                                        onHandleUploadFolderSelect(folder)
-                                      }
-                                    >
-                                      <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
-                                    </svg>
-                                  ) : (
-                                    <svg
-                                      width="24px"
-                                      height="24px"
-                                      viewBox="0 0 24 24"
-                                      fill="#0F9D58"
-                                    >
-                                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                                    </svg>
-                                  )}
-                                </React.Fragment>
-                              )}
-                            </ReactHoverObserver>
-                          </div>
-                        )}
+                            <div className="icon">
+                              <ReactHoverObserver>
+                                {({ isHovering }) => (
+                                  <React.Fragment>
+                                    {isHovering ? (
+                                      <svg
+                                        width="24px"
+                                        height="24px"
+                                        viewBox="0 0 24 24"
+                                        focusable="false"
+                                        onClick={() =>
+                                          onHandleUploadFolderSelect(folder)
+                                        }
+                                      >
+                                        <path d="M20 6h-8l-2-2H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm0 12H4V8h16v10z"></path>
+                                      </svg>
+                                    ) : (
+                                        <svg
+                                          width="24px"
+                                          height="24px"
+                                          viewBox="0 0 24 24"
+                                          fill="#0F9D58"
+                                        >
+                                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                                        </svg>
+                                      )}
+                                  </React.Fragment>
+                                )}
+                              </ReactHoverObserver>
+                            </div>
+                          )}
                       </div>
                     </div>
                   </div>
@@ -969,37 +1211,37 @@ export const Directory = (props) => {
                           content={item.name}
                         />
                       ) : (
-                        <Dropdown
-                          text={item.name}
-                          labeled
-                          className="navbar-dropdown"
-                        >
-                          <Dropdown.Menu>
-                            <Dropdown.Item
-                              icon="folder outline"
-                              label="New folder"
-                              onClick={() => handleDropdown("new_folder")}
-                            ></Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item
-                              icon="upload"
-                              label="Upload files"
-                              onClick={() => handleDropdown("upload_file")}
-                            ></Dropdown.Item>
-                            <Dropdown.Item
-                              icon="folder outline"
-                              label="Upload folder"
-                              onClick={() => handleDropdown("upload_folder")}
-                            ></Dropdown.Item>
-                            <Dropdown.Divider />
-                            <Dropdown.Item
-                              icon="google"
-                              label="Google Docs"
-                              onClick={() => handleDropdown("google_docs")}
-                            ></Dropdown.Item>
-                          </Dropdown.Menu>
-                        </Dropdown>
-                      )}
+                          <Dropdown
+                            text={item.name}
+                            labeled
+                            className="navbar-dropdown"
+                          >
+                            <Dropdown.Menu>
+                              <Dropdown.Item
+                                icon="folder outline"
+                                label="New folder"
+                                onClick={() => handleDropdown("new_folder")}
+                              ></Dropdown.Item>
+                              <Dropdown.Divider />
+                              <Dropdown.Item
+                                icon="upload"
+                                label="Upload files"
+                                onClick={() => handleDropdown("upload_file")}
+                              ></Dropdown.Item>
+                              <Dropdown.Item
+                                icon="folder outline"
+                                label="Upload folder"
+                                onClick={() => handleDropdown("upload_folder")}
+                              ></Dropdown.Item>
+                              <Dropdown.Divider />
+                              <Dropdown.Item
+                                icon="google"
+                                label="Google Docs"
+                                onClick={() => handleDropdown("google_docs")}
+                              ></Dropdown.Item>
+                            </Dropdown.Menu>
+                          </Dropdown>
+                        )}
                     </React.Fragment>
                   ))}
                 </div>
@@ -1025,16 +1267,16 @@ export const Directory = (props) => {
                         <path d="M3,5v14h18V5H3z M7,7v2H5V7H7z M5,13v-2h2v2H5z M5,15h2v2H5V15z M19,17H9v-2h10V17z M19,13H9v-2h10V13z M19,9H9V7h10V9z"></path>
                       </svg>
                     ) : (
-                      <svg
-                        width="24px"
-                        height="24px"
-                        viewBox="0 0 24 24"
-                        fill="#000000"
-                      >
-                        <path d="M2,5v14h20V5H2z M14,7v4h-4V7H14z M4,7h4v4H4V7z M16,11V7h4v4H16z M4,17v-4h4v4H4z M10,17v-4h4v4H10z M20,17 h-4v-4h4V17z"></path>
-                        <path d="M0 0h24v24H0z" fill="none"></path>
-                      </svg>
-                    )}
+                        <svg
+                          width="24px"
+                          height="24px"
+                          viewBox="0 0 24 24"
+                          fill="#000000"
+                        >
+                          <path d="M2,5v14h20V5H2z M14,7v4h-4V7H14z M4,7h4v4H4V7z M16,11V7h4v4H16z M4,17v-4h4v4H4z M10,17v-4h4v4H10z M20,17 h-4v-4h4V17z"></path>
+                          <path d="M0 0h24v24H0z" fill="none"></path>
+                        </svg>
+                      )}
                   </button>
                   <button className="btn-layout" onClick={handleShowDetail}>
                     <svg
@@ -1085,7 +1327,7 @@ export const Directory = (props) => {
                             {...bind()}
                             className={
                               selected_folder &&
-                              item.id === selected_folder.id
+                                item.id === selected_folder.id
                                 ? "guesture active"
                                 : "guesture"
                             }
@@ -1127,17 +1369,17 @@ export const Directory = (props) => {
                                   <path d="M8 24l2.83 2.83L22 15.66V40h4V15.66l11.17 11.17L40 24 24 8 8 24z"></path>
                                 </svg>
                               ) : (
-                                <svg
-                                  width="18px"
-                                  height="18px"
-                                  viewBox="0 0 48 48"
-                                  focusable="false"
-                                  fill="#000000"
-                                >
-                                  <path fill="none" d="M0 0h48v48H0V0z"></path>
-                                  <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
-                                </svg>
-                              )}
+                                  <svg
+                                    width="18px"
+                                    height="18px"
+                                    viewBox="0 0 48 48"
+                                    focusable="false"
+                                    fill="#000000"
+                                  >
+                                    <path fill="none" d="M0 0h48v48H0V0z"></path>
+                                    <path d="M40 24l-2.82-2.82L26 32.34V8h-4v24.34L10.84 21.16 8 24l16 16 16-16z"></path>
+                                  </svg>
+                                )}
                             </button>
                           </div>
                           <div className="th-owner">
@@ -1186,7 +1428,7 @@ export const Directory = (props) => {
                                 {...bind()}
                                 className={
                                   selected_folder &&
-                                  item.id === selected_folder.id
+                                    item.id === selected_folder.id
                                     ? "guesture active"
                                     : "guesture"
                                 }
@@ -1387,16 +1629,16 @@ export const Directory = (props) => {
                                 />
                               </div>
                             ) : (
-                              <div className="image">
-                                <img
-                                  src={matchImageResource16({
-                                    type: selected_file.content_type,
-                                  })}
-                                  alt={selected_file.name}
-                                  className="icon"
-                                />
-                              </div>
-                            )}
+                                <div className="image">
+                                  <img
+                                    src={matchImageResource16({
+                                      type: selected_file.content_type,
+                                    })}
+                                    alt={selected_file.name}
+                                    className="icon"
+                                  />
+                                </div>
+                              )}
                             <h3>{selected_file.name}</h3>
                           </React.Fragment>
                         )}
@@ -1529,22 +1771,22 @@ export const Directory = (props) => {
                   </MenuItem>
                 </React.Fragment>
               ) : (
-                <React.Fragment>
-                  <MenuItem data={{ foo: "download" }} onClick={handleClick}>
-                    <Icon name="cloud download" /> Download
+                  <React.Fragment>
+                    <MenuItem data={{ foo: "download" }} onClick={handleClick}>
+                      <Icon name="cloud download" /> Download
                   </MenuItem>
-                </React.Fragment>
-              )}
+                  </React.Fragment>
+                )}
             </ContextMenu>
           </ContextMenuTrigger>
         </div>
       ) : (
-        <Segment className="page-loader">
-          <Dimmer active inverted>
-            <Loader size="large"></Loader>
-          </Dimmer>
-        </Segment>
-      )}
+          <Segment className="page-loader">
+            <Dimmer active inverted>
+              <Loader size="large"></Loader>
+            </Dimmer>
+          </Segment>
+        )}
     </Layout>
   );
 };

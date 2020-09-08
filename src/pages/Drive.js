@@ -375,6 +375,9 @@ export const Drive = (props) => {
 
     let progress = new Array(1);
     const onHandleProgress = (loaded, index) => {
+      if (loaded > file_data.file.size) {
+        loaded = file_data.file.size;
+      }
       progress[index] = loaded;
       const sum = progress.reduce((a, b) => a + b, 0);
       console.log((loadedOffset + sum) / totalFileSize * 100);
