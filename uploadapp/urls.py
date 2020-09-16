@@ -1,5 +1,14 @@
 from django.urls import path
-from .views import *
+from .views import FileSignedUrlView,\
+    InitiateUploadView,\
+    CompleteUploadView, \
+    CompleteFolderUploadView, \
+    CompleteFileUploadView, \
+    FileUploadView, \
+    FolderUploadView, \
+    FileGetView, \
+    FileByDirectoryGetView, \
+    FolderSignedUrlView
 
 urlpatterns = [
     path('getsignedurl/', FileSignedUrlView.as_view()),
@@ -10,5 +19,6 @@ urlpatterns = [
     path('upload/', FileUploadView.as_view()),
     path('upload-folder/', FolderUploadView.as_view()),
     path('get/', FileGetView.as_view()),
-    path('get-directory-files', FileByDirectoryGetView.as_view())
+    path('get-directory-files', FileByDirectoryGetView.as_view()),
+    path('folder-signed-urls/', FolderSignedUrlView.as_view())
 ]

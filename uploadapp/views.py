@@ -12,14 +12,14 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.authtoken.models import Token
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
-from django.http import HttpResponse
+# from django.http import HttpResponse
 from botocore.exceptions import ClientError
 from botocore.client import Config
 from django.conf import settings
 from django.forms.models import model_to_dict
 
 from . import aws_config
-from . import config
+# from . import config
 from .models import File, Folder
 from .s3_multipart_upload import S3MultipartUpload
 
@@ -54,14 +54,6 @@ def upload_multipart(file, directory, username):
         username,
         directory
     )
-    # # abort all multipart uploads for this bucket (optional, for starting over)
-    # mpu.abort_all()
-    # # create new multipart upload
-    # mpu_id = mpu.create()
-    # # upload parts
-    # parts = mpu.upload(mpu_id)
-    # # complete multipart upload
-    # http_response = mpu.complete(mpu_id, parts)
     http_response = 500
     if mpu.multipart_upload_large_file():
         http_response = 200
@@ -116,7 +108,6 @@ def uploadfile_to_s3(file, directory, username):
     if response is None:
         return None
 
-    # Demonstrate how another Python program can use the presigned URL to upload a file
     with open(file_path, 'rb') as f:
         files = {'file': (file.name, f)}
         http_response = requests.post(
@@ -481,3 +472,61 @@ class CompleteFileUploadView(APIView):
         except Exception as e:
             print(e)
             return Response(status=status.HTTP_400_BAD_REQUEST)
+
+
+class FolderSignedUrlView(APIView):
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, *args, **kwargs):
+
+        folder_id = request.data['folder']
+        token = request.data['token']
+        user = Token.objects.get(key=token).user
+
+        s3_client = boto3.client(
+            's3',
+            aws_config.REGION,
+            config=Config(
+                s3={'addressing_style': 'path'},
+                signature_version='s3v4'),
+            aws_access_key_id=aws_config.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=aws_config.AWS_ACCESS_KEY,
+        )
+
+        try:
+            folder = Folder.objects.get(pk=folder_id)
+            current_folder = folder
+            parents = [folder.name]
+            while not current_folder.parent == 0:
+                current_folder = Folder.objects.get(pk=folder.parent)
+                parents.append(current_folder.name)
+            parents.reverse()
+            directory = '/'.join(parents)
+            files_objects = File.objects.filter(
+                user=user).filter(directory=folder.name).all()
+
+            res_arr = []
+            for file in files_objects:
+                path = '{}/{}/{}'.format(user.username, directory, file.name)
+                params = {
+                    'Bucket': aws_config.BUCKET_NAME,
+                    'Key': path,
+                }
+                signed_url = s3_client.generate_presigned_url(
+                    ClientMethod='get_object',
+                    Params=params,
+                    ExpiresIn=3600,
+                )
+                res_arr.append({
+                    'url': signed_url,
+                    'key': file.name,
+                    'type': file.content_type
+                })
+
+            return_data = {
+                "signed_urls": res_arr
+            }
+            return Response(return_data, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(e)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
