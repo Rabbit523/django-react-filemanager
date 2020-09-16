@@ -38,7 +38,9 @@ import {
   completeMultiUpload,
   completeFolderUpload,
   completeUpload,
-  uploadSingleFile
+  uploadSingleFile,
+  folderSignedUrls,
+  downloadSingleFile
 } from "../helpers/RestAPI";
 import { imageGroup128, imageGroup16 } from "../helpers/ImageGroup";
 import { matchImageResource16 } from "../helpers/MatchImageResource";
@@ -54,7 +56,9 @@ import {
 } from "../containers/Views";
 import Layout from "../containers/Layout";
 import Axios from "axios";
-import { array } from "prop-types";
+import { any, array } from "prop-types";
+import JSZip from "jszip";
+import { saveAs } from "file-saver";
 
 const CustomToast = ({ closeToast, text, type }) => {
   const onHandleCloseToast = () => {
@@ -111,6 +115,9 @@ export const Drive = (props) => {
   const CHUNK_SIZE = Math.pow(1024, 3);
   const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
   const LIMIT = 6 * Math.pow(1024, 3);
+
+  let zip = new JSZip();
+  let downloadZip = null;
 
   useEffect(() => {
     getFiles().then((res) => {
@@ -302,6 +309,14 @@ export const Drive = (props) => {
     }
   };
 
+  const DownloadFileFromS3 = async (signed_url) => {
+    const result = await downloadSingleFile(signed_url.url);
+    let mimeType = signed_url.type;
+    let fileName = signed_url.key;
+    let blob = new Blob([result.data], { type: mimeType });
+    downloadZip.file(fileName, blob);
+  };
+
   const handleClick = async (e, data) => {
     if (data.foo === "new_folder") {
       setCreatingModal(true);
@@ -315,15 +330,32 @@ export const Drive = (props) => {
       folderRef.current.click();
     }
     if (data.foo === "download") {
-      if (selected_file) {
+      if (selected_file && selected_file.path) {
         new Downloader({ url: selected_file.path })
           .then((res) => console.log(res))
           .catch((e) => console.warn(e));
       }
-      if (quick_file) {
+      if (quick_file && quick_file.path) {
         new Downloader({ url: quick_file.path })
           .then((res) => console.log(res))
           .catch((e) => console.warn(e));
+      }
+      if (selected_folder && selected_folder.id) {
+        let formData = new FormData();
+        formData.append('folder', selected_folder.id);
+
+        downloadZip = zip.folder(selected_folder.name);
+
+        const result = await folderSignedUrls(formData);
+        const signed_urls = result.data.data.signed_urls;
+        for (let i = 0; i < signed_urls.length; i++) {
+          await DownloadFileFromS3(signed_urls[i]);
+        }
+
+        zip.generateAsync({ type: "blob" })
+          .then(function (content) {
+            saveAs(content, selected_folder.name);
+          });
       }
     }
   };

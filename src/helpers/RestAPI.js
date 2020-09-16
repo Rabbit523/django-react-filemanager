@@ -59,7 +59,6 @@ export const uploadChunk = async (url, chunk, index, callback) => {
     console.log(error);
     return { error: error, data: null };
   }
-
 };
 
 export const uploadSingleFile = async (data, file, callback) => {
@@ -129,8 +128,6 @@ export const completeUpload = async (file, directory, type, size) => {
   }
 };
 
-
-
 export const completeFolderUpload = async (directory, parentId) => {
 
   var formData = new FormData();
@@ -179,6 +176,38 @@ export const uploadFile = async (formData) => {
   }
 };
 
+export const folderSignedUrls = async (formData) => {
+
+  formData.append("token", localStorage.getItem("token"));
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/folder-signed-urls/`, formData)
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
+export const downloadSingleFile = async (url, callback) => {
+
+  // Actual file has to be appended last.
+  let config = {
+    // onUploadProgress: progressEvent => {
+    //   callback(progressEvent.loaded, 0);
+    // },
+    responseType: 'blob'
+  };
+
+  try {
+    // const result = await axios.post(data.url, formData, config);
+    const result = await axios.get(url, config);
+    return { error: null, data: result.data };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
 
 export const uploadFiles = (formData) => {
   formData.append("token", localStorage.getItem("token"));
