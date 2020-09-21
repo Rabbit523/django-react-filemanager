@@ -80,6 +80,7 @@ export const Directory = (props) => {
   const fileRef = useRef();
   const folderRef = useRef();
   const inputRef = useRef();
+  const foldersRef = useRef();
 
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
@@ -106,9 +107,15 @@ export const Directory = (props) => {
   const [routeTree, setRouteTree] = useState([]);
   const [mobileCurRoute, setMobileCurRoute] = useState({});
 
+  foldersRef.current = folders;
+
   const CHUNK_SIZE = Math.pow(1024, 3);
   const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
   const LIMIT = 6 * Math.pow(1024, 3);
+
+  useEffect(() => {
+    setPageLoaded(true);
+  }, [folders]);
 
   let zip = new JSZip();
   let downloadZip = null;
@@ -281,7 +288,7 @@ export const Directory = (props) => {
               setSelectedFile(file);
             } else {
               setSelectedFile({});
-              const folder = folders.find(
+              const folder = foldersRef.current.find(
                 (folder) => folder.id === parseInt(cur)
               );
               setSelectedFolder(folder);
@@ -606,7 +613,7 @@ export const Directory = (props) => {
   };
 
   const onHandleUploadFolderSelect = (folder) => {
-    const selected_folder = folders.find(
+    const selected_folder = foldersRef.current.find(
       (ele, index) => ele.name === folder.name
     );
     setSelectedFolder(selected_folder);
@@ -873,7 +880,7 @@ export const Directory = (props) => {
               }
             } else {
               setSelectedFile({});
-              const folder = folders.find(
+              const folder = foldersRef.current.find(
                 (folder) => folder.id === parseInt(cur)
               );
               setSelectedFolder(folder);
@@ -902,7 +909,7 @@ export const Directory = (props) => {
             setSelectedFile(file);
           } else {
             setSelectedFile({});
-            const folder = folders.find(
+            const folder = foldersRef.current.find(
               (folder) => folder.id === parseInt(cur)
             );
             setSelectedFolder(folder);

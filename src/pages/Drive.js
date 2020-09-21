@@ -79,6 +79,7 @@ export const Drive = (props) => {
   const fileRef = useRef();
   const folderRef = useRef();
   const inputRef = useRef();
+  const foldersRef = useRef();
 
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
@@ -111,6 +112,7 @@ export const Drive = (props) => {
   const [selected_folder, setSelectedFolder] = useState({});
   const [new_folder_title, setFolderTitle] = useState("Untitled folder");
   const [folders, setFolders] = useState([]);
+  foldersRef.current = folders;
 
   const CHUNK_SIZE = Math.pow(1024, 3);
   const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
@@ -118,6 +120,10 @@ export const Drive = (props) => {
 
   let zip = new JSZip();
   let downloadZip = null;
+
+  useEffect(() => {
+    setPageLoaded(true);
+  }, [folders]);
 
   useEffect(() => {
     getFiles().then((res) => {
@@ -150,7 +156,6 @@ export const Drive = (props) => {
       }
       getFolders(0).then((res) => {
         setFolders(res);
-        setPageLoaded(true);
       });
     });
   }, []);
@@ -209,7 +214,6 @@ export const Drive = (props) => {
             setUploadingFolders(uploading_folders);
           }
           setFolders(res);
-          setPageLoaded(true);
         });
       });
     }
@@ -253,7 +257,7 @@ export const Drive = (props) => {
             } else {
               setSelectedFile({});
               setQuickFile({});
-              const folder = folders.find(
+              const folder = foldersRef.current.find(
                 (folder) => folder.id === parseInt(cur)
               );
               setSelectedFolder(folder);
@@ -560,7 +564,7 @@ export const Drive = (props) => {
   };
 
   const onHandleUploadFolderSelect = (folder) => {
-    const selected_folder = folders.find(
+    const selected_folder = foldersRef.current.find(
       (ele, index) => ele.name === folder.name
     );
     setSelectedFolder(selected_folder);
@@ -858,7 +862,7 @@ export const Drive = (props) => {
             } else {
               setSelectedFile({});
               setQuickFile({});
-              const folder = folders.find(
+              const folder = foldersRef.current.find(
                 (folder) => folder.id === parseInt(cur)
               );
               setSelectedFolder(folder);
@@ -901,7 +905,7 @@ export const Drive = (props) => {
           } else {
             setSelectedFile({});
             setQuickFile({});
-            const folder = folders.find(
+            const folder = foldersRef.current.find(
               (folder) => folder.id === parseInt(cur)
             );
             setSelectedFolder(folder);
