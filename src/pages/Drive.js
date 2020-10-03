@@ -83,9 +83,11 @@ export const Drive = (props) => {
 
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
+  const [is_downloadingModal, setDownloadingModal] = useState(false);
   const [is_creatingModal, setCreatingModal] = useState(false);
   const [is_minimized, setMinimize] = useState(false);
   const [is_uploaded, setUploaded] = useState(false);
+  const [is_downloaded, setDownloaded] = useState(false);
   const [is_context, setContext] = useState(true);
   const [is_triggerable, setContextTrigger] = useState(true);
   const [is_gridType, setViewType] = useState(true);
@@ -116,7 +118,7 @@ export const Drive = (props) => {
 
   const CHUNK_SIZE = Math.pow(1024, 3);
   const CHUNK_LIMIT = 5 * Math.pow(1024, 2);
-  const LIMIT = 6 * Math.pow(1024, 3);
+  const LIMIT = 9 * Math.pow(1024, 3);
 
   let zip = new JSZip();
   let downloadZip = null;
@@ -335,16 +337,28 @@ export const Drive = (props) => {
     }
     if (data.foo === "download") {
       if (selected_file && selected_file.path) {
+        setDownloadingModal(true);
+        setDownloaded(false);
         new Downloader({ url: selected_file.path })
-          .then((res) => console.log(res))
+          .then((res) => {
+            setDownloaded(true);
+            console.log(res);
+          })
           .catch((e) => console.warn(e));
       }
       if (quick_file && quick_file.path) {
+        setDownloadingModal(true);
+        setDownloaded(false);
         new Downloader({ url: quick_file.path })
-          .then((res) => console.log(res))
+          .then((res) => {
+            setDownloaded(true);
+            console.log(res);
+          })
           .catch((e) => console.warn(e));
       }
       if (selected_folder && selected_folder.id) {
+        setDownloadingModal(true);
+        setDownloaded(false);
         let formData = new FormData();
         formData.append('folder', selected_folder.id);
 
@@ -359,6 +373,7 @@ export const Drive = (props) => {
         zip.generateAsync({ type: "blob" })
           .then(function (content) {
             saveAs(content, selected_folder.name);
+            setDownloaded(true);
           });
       }
     }
@@ -692,6 +707,7 @@ export const Drive = (props) => {
 
   const closeModal = () => {
     setUploadingModal(false);
+    setDownloadingModal(false);
     setTotalFileCount(0);
     setUploadingFiles([]);
     setUploadingFolders([]);
@@ -761,14 +777,17 @@ export const Drive = (props) => {
     setMobileSide(false);
     if (type === "download") {
       if (selected_file) {
+        setDownloadingModal(true);
+        setDownloaded(false);
         console.log(selected_file);
         new Downloader({
           url: selected_file.path,
           mobileDisabled: false,
           forceDesktopMode: true,
         })
-          .then((res) =>
-            toast.dark(
+          .then((res) => {
+            setDownloaded(true);
+            return toast.dark(
               <CustomToast
                 text="1 item will be download. See notification for details"
                 type="download"
@@ -782,6 +801,7 @@ export const Drive = (props) => {
                 className: "toast-custom",
               }
             )
+          }
           )
           .catch((e) => console.warn(e));
       }
@@ -807,13 +827,17 @@ export const Drive = (props) => {
                 setSelectedFile(file);
                 setQuickFile({});
                 if (!e.target.className.includes("info-box")) {
+                  setDownloadingModal(true);
+                  setDownloaded(false);
                   new Downloader({
                     url: file.path,
                     mobileDisabled: false,
                     forceDesktopMode: true,
                   })
-                    .then((res) =>
-                      toast.dark(
+                    .then((res) => {
+                      setDownloaded(true);
+
+                      return toast.dark(
                         <CustomToast
                           text="1 item will be download. See notification for details"
                           type="download"
@@ -826,7 +850,8 @@ export const Drive = (props) => {
                           draggable: true,
                           className: "toast-custom",
                         }
-                      )
+                      );
+                    }
                     )
                     .catch((e) => console.warn(e));
                 }
@@ -836,13 +861,16 @@ export const Drive = (props) => {
                 );
                 setQuickFile(file);
                 setSelectedFile({});
+                setDownloadingModal(true);
+                setDownloaded(false);
                 new Downloader({
                   url: file.path,
                   mobileDisabled: false,
                   forceDesktopMode: true,
                 })
-                  .then((res) =>
-                    toast.dark(
+                  .then((res) => {
+                    setDownloaded(true);
+                    return toast.dark(
                       <CustomToast
                         text="1 item will be download. See notification for details"
                         type="download"
@@ -856,6 +884,7 @@ export const Drive = (props) => {
                         className: "toast-custom",
                       }
                     )
+                  }
                   )
                   .catch((e) => console.warn(e));
               }
@@ -1142,6 +1171,71 @@ export const Drive = (props) => {
                 ))}
               </div>
             )}
+          </Modal>
+          <Modal
+            isOpen={is_downloadingModal}
+            onRequestClose={closeModal}
+            className="file-download-modal"
+            overlayClassName="file-download-modal-overlay"
+          >
+            <div className="modal-header">
+              <div className="loading-status">
+                <span>Download</span>
+              </div>
+              <div className="btn-group">
+                <Popup
+                  trigger={
+                    <button className="tooltip" onClick={closeModal}>
+                      <svg
+                        x="0px"
+                        y="0px"
+                        width="14px"
+                        height="14px"
+                        viewBox="0 0 10 10"
+                        focusable="false"
+                        fill="#FFFFFF"
+                      >
+                        <polygon points="10,1.01 8.99,0 5,3.99 1.01,0 0,1.01 3.99,5 0,8.99 1.01,10 5,6.01 8.99,10 10,8.99 6.01,5 "></polygon>
+                      </svg>
+                    </button>
+                  }
+                  position="bottom center"
+                  on="hover"
+                  arrow={false}
+                >
+                  <span className="content">Close</span>
+                </Popup>
+              </div>
+            </div>
+            <div className="modal-body">
+              <div className="item">
+                <div className="content">
+                  <div className="status">
+                    {!is_downloaded ? (
+                      <>
+                        Preparing &nbsp;
+                      <ReactLoading
+                          type="spin"
+                          color="#929292"
+                          className="loading"
+                        />
+                      </>
+                    ) : <>
+                        Done &nbsp;
+                        <svg
+                          width="24px"
+                          height="24px"
+                          viewBox="0 0 24 24"
+                          fill="#0F9D58"
+                        >
+                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                        </svg>
+                      </>
+                    }
+                  </div>
+                </div>
+              </div>
+            </div>
           </Modal>
           <Modal
             isOpen={is_creatingModal}

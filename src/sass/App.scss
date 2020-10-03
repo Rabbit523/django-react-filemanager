@@ -1074,13 +1074,13 @@ body {
     }
   }
 
-  .file-upload-modal-overlay {
+  .file-upload-modal-overlay, .file-download-modal-overlay {
     position: fixed;
     right: 0;
     bottom: 0;
     z-index: 1073;
   }
-  .file-upload-modal {
+  .file-upload-modal, .file-download-modal {
     position: absolute;
     bottom: 24px;
     right: 24px;
@@ -1227,6 +1227,7 @@ body {
             .loading {
               width: 24px !important;
               height: 24px !important;
+              display: inline-block;
             }
             .icon {
               border: 1px solid transparent;
