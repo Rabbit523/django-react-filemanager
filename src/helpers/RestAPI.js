@@ -81,7 +81,7 @@ export const uploadSingleFile = async (data, file, callback) => {
     const result = await axios.post(data.url, formData, config);
     return { error: null, data: result };
   } catch (error) {
-    console.log(error);
+    console.log('error', error);
     return { error: error, data: null };
   }
 
@@ -189,22 +189,34 @@ export const folderSignedUrls = async (formData) => {
   }
 };
 
+export const fileSingedUrl = async (formData) => {
+
+  formData.append("token", localStorage.getItem("token"));
+  try {
+    const result = await axios
+      .post(`${config.PROD_BASE_URL}/api-upload/file-signed-url/`, formData)
+    return { error: null, data: result };
+  } catch (error) {
+    console.log(error);
+    return { error: error, data: null };
+  }
+};
+
 export const downloadSingleFile = async (url, callback) => {
 
   // Actual file has to be appended last.
   let config = {
-    // onUploadProgress: progressEvent => {
-    //   callback(progressEvent.loaded, 0);
-    // },
+    onDownloadProgress: progressEvent => {
+      callback(progressEvent);
+    },
     responseType: 'blob'
   };
 
   try {
-    // const result = await axios.post(data.url, formData, config);
     const result = await axios.get(url, config);
     return { error: null, data: result.data };
   } catch (error) {
-    console.log(error);
+    console.log('error', error);
     return { error: error, data: null };
   }
 };

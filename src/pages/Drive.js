@@ -40,6 +40,7 @@ import {
   completeUpload,
   uploadSingleFile,
   folderSignedUrls,
+  fileSingedUrl,
   downloadSingleFile
 } from "../helpers/RestAPI";
 import { imageGroup128, imageGroup16 } from "../helpers/ImageGroup";
@@ -80,6 +81,8 @@ export const Drive = (props) => {
   const folderRef = useRef();
   const inputRef = useRef();
   const foldersRef = useRef();
+  const totalSizeRef = useRef();
+  const downloadedRef = useRef();
 
   const [is_page_loaded, setPageLoaded] = useState(false);
   const [is_uploadingModal, setUploadingModal] = useState(false);
@@ -97,6 +100,13 @@ export const Drive = (props) => {
   const [file_count, setFileCount] = useState(0);
   const [total_file_count, setTotalFileCount] = useState(0);
   const [upload_percent, setUploadPercent] = useState(0);
+  const [download_percent, setDownloadPercentage] = useState(0);
+
+  const [is_download_failed, setDownloadFailed] = useState(false);
+  const [is_upload_failed, setUploadFailed] = useState(false);
+
+  const [operation_error, setOperationError] = useState('');
+
   const [uploading_files, setUploadingFiles] = useState([]);
   const [uploading_folders, setUploadingFolders] = useState([]);
   const [files, setFiles] = useState([]);
@@ -315,12 +325,64 @@ export const Drive = (props) => {
     }
   };
 
-  const DownloadFileFromS3 = async (signed_url) => {
-    const result = await downloadSingleFile(signed_url.url);
-    let mimeType = signed_url.type;
-    let fileName = signed_url.key;
-    let blob = new Blob([result.data], { type: mimeType });
-    downloadZip.file(fileName, blob);
+  const process = (event) => {
+    if (!event.lengthComputable) return; // guard
+    const loaded = event.loaded + downloadedRef.current;
+    var downloadingPercentage = Math.floor(loaded / totalSizeRef.current * 100);
+    setDownloadPercentage(downloadingPercentage);
+  };
+
+  const downloadBlob = (blob, name = 'file.txt') => {
+    // Convert your blob into a Blob URL (a special url that points to an object in the browser's memory)
+    const blobUrl = URL.createObjectURL(blob);
+
+    // Create a link element
+    const link = document.createElement("a");
+
+    // Set link's href to point to the Blob URL
+    link.href = blobUrl;
+    link.download = name;
+
+    // Append link to the body
+    document.body.appendChild(link);
+
+    const clickHandler = () => {
+      setTimeout(() => {
+        URL.revokeObjectURL(blobUrl);
+        link.removeEventListener('click', clickHandler);
+      }, 150);
+    };
+
+    link.addEventListener('click', clickHandler, false);
+
+    // Dispatch click event on the link
+    // This is necessary as link.click() does not work on the latest firefox
+    link.dispatchEvent(
+      new MouseEvent('click', {
+        bubbles: true,
+        cancelable: true,
+        view: window
+      })
+    );
+
+    // Remove link from body
+    document.body.removeChild(link);
+  }
+
+  const DownloadFileFromS3 = async (type, signed_url) => {
+    const result = await downloadSingleFile(signed_url.url, process);
+    if (result.error) {
+      setDownloadFailed(true);
+    }
+    else {
+      downloadedRef.current = downloadedRef.current + result.data.size;
+
+      let mimeType = signed_url.type;
+      let fileName = signed_url.key;
+      let blob = new Blob([result.data], { type: mimeType });
+      if (type === 'folder') downloadZip.file(fileName, blob);
+      else if (type === 'file') downloadBlob(blob, fileName);
+    }
   };
 
   const handleClick = async (e, data) => {
@@ -336,25 +398,41 @@ export const Drive = (props) => {
       folderRef.current.click();
     }
     if (data.foo === "download") {
+      setDownloadPercentage(0);
+      setDownloadFailed(false);
       if (selected_file && selected_file.path) {
         setDownloadingModal(true);
         setDownloaded(false);
-        new Downloader({ url: selected_file.path })
-          .then((res) => {
-            setDownloaded(true);
-            console.log(res);
-          })
-          .catch((e) => console.warn(e));
+
+        let formData = new FormData();
+        formData.append('file', selected_file.id);
+
+        const result = await fileSingedUrl(formData);
+        const signed_urls = result.data.data.signed_urls;
+
+        totalSizeRef.current = parseInt(selected_file.size);
+        downloadedRef.current = 0;
+        for (let i = 0; i < signed_urls.length; i++) {
+          await DownloadFileFromS3('file', signed_urls[i]);
+        }
+        setDownloaded(true);
       }
       if (quick_file && quick_file.path) {
         setDownloadingModal(true);
         setDownloaded(false);
-        new Downloader({ url: quick_file.path })
-          .then((res) => {
-            setDownloaded(true);
-            console.log(res);
-          })
-          .catch((e) => console.warn(e));
+
+        let formData = new FormData();
+        formData.append('file', quick_file.id);
+
+        const result = await fileSingedUrl(formData);
+        const signed_urls = result.data.data.signed_urls;
+
+        totalSizeRef.current = parseInt(quick_file.size);
+        downloadedRef.current = 0;
+        for (let i = 0; i < signed_urls.length; i++) {
+          await DownloadFileFromS3('file', signed_urls[i]);
+        }
+        setDownloaded(true);
       }
       if (selected_folder && selected_folder.id) {
         setDownloadingModal(true);
@@ -366,8 +444,11 @@ export const Drive = (props) => {
 
         const result = await folderSignedUrls(formData);
         const signed_urls = result.data.data.signed_urls;
+        totalSizeRef.current = result.data.data.total_size;
+        downloadedRef.current = 0;
+
         for (let i = 0; i < signed_urls.length; i++) {
-          await DownloadFileFromS3(signed_urls[i]);
+          await DownloadFileFromS3('folder', signed_urls[i]);
         }
 
         zip.generateAsync({ type: "blob" })
@@ -402,6 +483,7 @@ export const Drive = (props) => {
     formData.append('clientMethod', 'upload_part');
 
     const res = await getSignedPostUrl(formData);
+    if (res.error) setUploadFailed(true);
 
     const response = await uploadChunk(
       res.data.data.signed_url,
@@ -409,6 +491,7 @@ export const Drive = (props) => {
       index,
       callback
     );
+    if (response.error) setUploadFailed(true);
     let etag = response.data.headers['etag'];
     return {
       'ETag': etag.substring(1, etag.length - 1),
@@ -436,10 +519,13 @@ export const Drive = (props) => {
     };
 
     const res = await getSignedPostUrl(formData);
+    if (res.error) setUploadFailed(true);
     const fileResponse = await uploadSingleFile(res.data.data.signed_url, file_data.file, onHandleProgress);
+    if (fileResponse.error) setUploadFailed(true);
     console.log(fileResponse);
 
     const complete = await completeUpload(file_data.file.name, file_data.directory, file_data.file.type, file_data.file.size);
+    if (complete.error) setUploadFailed(true);
     return complete.data;
   }
 
@@ -459,6 +545,7 @@ export const Drive = (props) => {
     parts = await Promise.all(promises);
 
     const complete = await completeMultiUpload(chunk.file, chunk.directory, parts, chunk.mpuId, chunk.type, chunk.size);
+    if (complete.error) setUploadFailed(true);
     return complete.data;
   };
 
@@ -505,6 +592,7 @@ export const Drive = (props) => {
       setUploadingModal(true);
     }
     setUploaded(false);
+    setUploadFailed(false);
 
     let response = [];
     for (let file of file_arr) {
@@ -523,6 +611,7 @@ export const Drive = (props) => {
         const chunkCounts = calculateChunks(file);
         let partNo = 1;
         const res = await getMultiPartUploadId(file.name, null);
+        if (res.error) setUploadFailed(true);
         const mpuId = res.data.data.mpu_id;
         let chunks = [];
         let _offset = 0;
@@ -635,6 +724,7 @@ export const Drive = (props) => {
     setFileCount(file_count + 1);
     setUploadingModal(true);
     setUploaded(false);
+    setUploadFailed(false);
 
     let response = [];
     for (let file of file_arr) {
@@ -652,6 +742,7 @@ export const Drive = (props) => {
         const chunkCounts = calculateChunks(file);
         let partNo = 1;
         const res = await getMultiPartUploadId(file.name, directory.split("/")[0]);
+        if (res.error) setUploadFailed(true);
         const mpuId = res.data.data.mpu_id;
         let chunks = [];
         let _offset = 0;
@@ -680,6 +771,7 @@ export const Drive = (props) => {
     }
     loadedOffset = 0;
     const res = await completeFolderUpload(directory.split("/")[0], 0);
+    if (res.error) setUploadFailed(true);
     // complete folder upload
     const res_arr = [];
     res_arr.push(res);
@@ -773,37 +865,72 @@ export const Drive = (props) => {
   const onHandleMobileSideClose = () => {
     setMobileSide(false);
   };
-  const onHandleMobileSideItem = (type) => {
+  const onHandleMobileSideItem = async (type) => {
     setMobileSide(false);
     if (type === "download") {
+      setDownloadPercentage(0);
+      setDownloadFailed(false);
       if (selected_file) {
         setDownloadingModal(true);
         setDownloaded(false);
-        console.log(selected_file);
-        new Downloader({
-          url: selected_file.path,
-          mobileDisabled: false,
-          forceDesktopMode: true,
-        })
-          .then((res) => {
-            setDownloaded(true);
-            return toast.dark(
-              <CustomToast
-                text="1 item will be download. See notification for details"
-                type="download"
-              />,
-              {
-                position: toast.POSITION.BOTTOM_CENTER,
-                hideProgressBar: true,
-                closeOnClick: false,
-                pauseOnHover: true,
-                draggable: true,
-                className: "toast-custom",
-              }
-            )
+
+        let formData = new FormData();
+        formData.append('file', selected_file.id);
+
+        const result = await fileSingedUrl(formData);
+        const signed_urls = result.data.data.signed_urls;
+
+        totalSizeRef.current = parseInt(selected_file.size);
+        downloadedRef.current = 0;
+
+        for (let i = 0; i < signed_urls.length; i++) {
+          await DownloadFileFromS3('file', signed_urls[i]);
+        }
+        setDownloaded(true);
+
+        toast.dark(
+          <CustomToast
+            text="1 item will be download. See notification for details"
+            type="download"
+          />,
+          {
+            position: toast.POSITION.BOTTOM_CENTER,
+            hideProgressBar: true,
+            closeOnClick: false,
+            pauseOnHover: true,
+            draggable: true,
+            className: "toast-custom",
           }
-          )
-          .catch((e) => console.warn(e));
+        );
+
+        //   new Downloader({
+        //     url: selected_file.path,
+        //     process: process,
+        //     mobileDisabled: false,
+        //     forceDesktopMode: true,
+        //   })
+        //     .then((res) => {
+        //       setDownloaded(true);
+        //       return toast.dark(
+        //         <CustomToast
+        //           text="1 item will be download. See notification for details"
+        //           type="download"
+        //         />,
+        //         {
+        //           position: toast.POSITION.BOTTOM_CENTER,
+        //           hideProgressBar: true,
+        //           closeOnClick: false,
+        //           pauseOnHover: true,
+        //           draggable: true,
+        //           className: "toast-custom",
+        //         }
+        //       )
+        //     }
+        //     )
+        //     .catch((e) => {
+        //       setDownloaded(true);
+        //       console.warn(e);
+        //     });
       }
     }
     if (type === "trash") {
@@ -812,7 +939,7 @@ export const Drive = (props) => {
   };
 
   const bind = useGesture({
-    onMouseDown: (e) => {
+    onMouseDown: async (e) => {
       if (e.button === 0) {
         setContextTrigger(true);
         if (isMobileOnly) {
@@ -822,6 +949,8 @@ export const Drive = (props) => {
           if (cur !== "0") {
             if (type === "file") {
               setSelectedFolder({});
+              setDownloadPercentage(0);
+              setDownloadFailed(false);
               if (access === "detail") {
                 const file = files.find((file) => file.id === parseInt(cur));
                 setSelectedFile(file);
@@ -829,31 +958,65 @@ export const Drive = (props) => {
                 if (!e.target.className.includes("info-box")) {
                   setDownloadingModal(true);
                   setDownloaded(false);
-                  new Downloader({
-                    url: file.path,
-                    mobileDisabled: false,
-                    forceDesktopMode: true,
-                  })
-                    .then((res) => {
-                      setDownloaded(true);
 
-                      return toast.dark(
-                        <CustomToast
-                          text="1 item will be download. See notification for details"
-                          type="download"
-                        />,
-                        {
-                          position: toast.POSITION.BOTTOM_CENTER,
-                          hideProgressBar: true,
-                          closeOnClick: false,
-                          pauseOnHover: true,
-                          draggable: true,
-                          className: "toast-custom",
-                        }
-                      );
+                  let formData = new FormData();
+                  formData.append('file', file.id);
+
+                  const result = await fileSingedUrl(formData);
+                  const signed_urls = result.data.data.signed_urls;
+
+                  totalSizeRef.current = parseInt(file.size);
+                  downloadedRef.current = 0;
+
+                  for (let i = 0; i < signed_urls.length; i++) {
+                    await DownloadFileFromS3('file', signed_urls[i]);
+                  }
+                  setDownloaded(true);
+
+                  toast.dark(
+                    <CustomToast
+                      text="1 item will be download. See notification for details"
+                      type="download"
+                    />,
+                    {
+                      position: toast.POSITION.BOTTOM_CENTER,
+                      hideProgressBar: true,
+                      closeOnClick: false,
+                      pauseOnHover: true,
+                      draggable: true,
+                      className: "toast-custom",
                     }
-                    )
-                    .catch((e) => console.warn(e));
+                  );
+
+                  // new Downloader({
+                  //   url: file.path,
+                  //   process: process,
+                  //   mobileDisabled: false,
+                  //   forceDesktopMode: true,
+                  // })
+                  //   .then((res) => {
+                  //     setDownloaded(true);
+
+                  //     return toast.dark(
+                  //       <CustomToast
+                  //         text="1 item will be download. See notification for details"
+                  //         type="download"
+                  //       />,
+                  //       {
+                  //         position: toast.POSITION.BOTTOM_CENTER,
+                  //         hideProgressBar: true,
+                  //         closeOnClick: false,
+                  //         pauseOnHover: true,
+                  //         draggable: true,
+                  //         className: "toast-custom",
+                  //       }
+                  //     );
+                  //   }
+                  //   )
+                  //   .catch((e) => {
+                  //     setDownloaded(true);
+                  //     console.warn(e);
+                  //   });
                 }
               } else {
                 const file = quick_files.find(
@@ -863,30 +1026,63 @@ export const Drive = (props) => {
                 setSelectedFile({});
                 setDownloadingModal(true);
                 setDownloaded(false);
-                new Downloader({
-                  url: file.path,
-                  mobileDisabled: false,
-                  forceDesktopMode: true,
-                })
-                  .then((res) => {
-                    setDownloaded(true);
-                    return toast.dark(
-                      <CustomToast
-                        text="1 item will be download. See notification for details"
-                        type="download"
-                      />,
-                      {
-                        position: toast.POSITION.BOTTOM_CENTER,
-                        hideProgressBar: true,
-                        closeOnClick: false,
-                        pauseOnHover: true,
-                        draggable: true,
-                        className: "toast-custom",
-                      }
-                    )
+
+                let formData = new FormData();
+                formData.append('file', file.id);
+
+                const result = await fileSingedUrl(formData);
+                const signed_urls = result.data.data.signed_urls;
+
+                totalSizeRef.current = parseInt(file.size);
+                downloadedRef.current = 0;
+
+                for (let i = 0; i < signed_urls.length; i++) {
+                  await DownloadFileFromS3('file', signed_urls[i]);
+                }
+                setDownloaded(true);
+
+                toast.dark(
+                  <CustomToast
+                    text="1 item will be download. See notification for details"
+                    type="download"
+                  />,
+                  {
+                    position: toast.POSITION.BOTTOM_CENTER,
+                    hideProgressBar: true,
+                    closeOnClick: false,
+                    pauseOnHover: true,
+                    draggable: true,
+                    className: "toast-custom",
                   }
-                  )
-                  .catch((e) => console.warn(e));
+                );
+                // new Downloader({
+                //   url: file.path,
+                //   process: process,
+                //   mobileDisabled: false,
+                //   forceDesktopMode: true,
+                // })
+                //   .then((res) => {
+                //     setDownloaded(true);
+                //     return toast.dark(
+                //       <CustomToast
+                //         text="1 item will be download. See notification for details"
+                //         type="download"
+                //       />,
+                //       {
+                //         position: toast.POSITION.BOTTOM_CENTER,
+                //         hideProgressBar: true,
+                //         closeOnClick: false,
+                //         pauseOnHover: true,
+                //         draggable: true,
+                //         className: "toast-custom",
+                //       }
+                //     )
+                //   }
+                //   )
+                //   .catch((e) => {
+                //     setDownloaded(true);
+                //     console.warn(e);
+                //   });
               }
             } else {
               setSelectedFile({});
@@ -964,12 +1160,17 @@ export const Drive = (props) => {
           >
             <div className="modal-header">
               <div className="loading-status">
-                {!is_uploaded && (
+                {is_upload_failed && (
+                  <span>
+                    Upload Failed
+                  </span>
+                )}
+                {!is_upload_failed && !is_uploaded && (
                   <span>
                     Uploading {file_count} {file_count > 1 ? "items" : "item"} - {upload_percent}% completed
                   </span>
                 )}
-                {is_uploaded && (
+                {!is_upload_failed && is_uploaded && (
                   <span>
                     {total_file_count} &nbsp;
                     {total_file_count > 1 ? "uploads " : "upload "}
@@ -1042,7 +1243,17 @@ export const Drive = (props) => {
                 </Popup>
               </div>
             </div>
-            {!is_minimized && (
+            {is_upload_failed && (
+              <>
+                Upload failed &nbsp;
+                <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                  <g>
+                    <path stroke="null" id="svg_1" fill="#D72828" d="m10,0.11117c-5.461519,0 -9.88883,4.427312 -9.88883,9.88883s4.427312,9.88883 9.88883,9.88883s9.88883,-4.427312 9.88883,-9.88883s-4.427312,-9.88883 -9.88883,-9.88883zm4.943179,13.958496l-0.874337,0.873513l-4.068842,-4.06843l-4.06843,4.06843l-0.874749,-0.873513l4.069254,-4.069254l-4.069254,-4.069254l0.873513,-0.874337l4.069666,4.069666l4.070078,-4.069666l0.873101,0.874337l-4.068842,4.069254l4.068842,4.069254z" />
+                  </g>
+                </svg>
+              </>
+            )}
+            {!is_upload_failed && !is_minimized && (
               <div
                 className={
                   total_file_count > 10 ? "modal-body extra" : "modal-body"
@@ -1180,7 +1391,21 @@ export const Drive = (props) => {
           >
             <div className="modal-header">
               <div className="loading-status">
-                <span>Download</span>
+                {is_download_failed && (
+                  <span>
+                    Download Failed
+                  </span>
+                )}
+                {!is_download_failed && !is_downloaded && (
+                  <span>
+                    Downloading - {download_percent}% completed
+                  </span>
+                )}
+                {!is_download_failed && is_downloaded && (
+                  <span>
+                    Download Completed
+                  </span>
+                )}
               </div>
               <div className="btn-group">
                 <Popup
@@ -1211,7 +1436,18 @@ export const Drive = (props) => {
               <div className="item">
                 <div className="content">
                   <div className="status">
-                    {!is_downloaded ? (
+                    {is_download_failed && (
+                      <>
+                        Failed &nbsp;
+                        <svg width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                          <g>
+                            <path stroke="null" id="svg_1" fill="#D72828" d="m10,0.11117c-5.461519,0 -9.88883,4.427312 -9.88883,9.88883s4.427312,9.88883 9.88883,9.88883s9.88883,-4.427312 9.88883,-9.88883s-4.427312,-9.88883 -9.88883,-9.88883zm4.943179,13.958496l-0.874337,0.873513l-4.068842,-4.06843l-4.06843,4.06843l-0.874749,-0.873513l4.069254,-4.069254l-4.069254,-4.069254l0.873513,-0.874337l4.069666,4.069666l4.070078,-4.069666l0.873101,0.874337l-4.068842,4.069254l4.068842,4.069254z" />
+                          </g>
+                        </svg>
+                      </>
+                    )
+                    }
+                    {!is_download_failed && !is_downloaded ? (
                       <>
                         Preparing &nbsp;
                       <ReactLoading
@@ -1220,17 +1456,18 @@ export const Drive = (props) => {
                           className="loading"
                         />
                       </>
-                    ) : <>
-                        Done &nbsp;
+                    ) : !is_download_failed && is_downloaded ? <>
+                      Done &nbsp;
                         <svg
-                          width="24px"
-                          height="24px"
-                          viewBox="0 0 24 24"
-                          fill="#0F9D58"
-                        >
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
-                        </svg>
-                      </>
+                        width="24px"
+                        height="24px"
+                        viewBox="0 0 24 24"
+                        fill="#0F9D58"
+                      >
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                      </svg>
+                    </>
+                        : null
                     }
                   </div>
                 </div>

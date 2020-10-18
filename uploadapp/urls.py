@@ -8,7 +8,8 @@ from .views import FileSignedUrlView,\
     FolderUploadView, \
     FileGetView, \
     FileByDirectoryGetView, \
-    FolderSignedUrlView
+    FolderSignedUrlView, \
+    FileDownloadUrlView
 
 urlpatterns = [
     path('getsignedurl/', FileSignedUrlView.as_view()),
@@ -20,5 +21,6 @@ urlpatterns = [
     path('upload-folder/', FolderUploadView.as_view()),
     path('get/', FileGetView.as_view()),
     path('get-directory-files', FileByDirectoryGetView.as_view()),
-    path('folder-signed-urls/', FolderSignedUrlView.as_view())
+    path('folder-signed-urls/', FolderSignedUrlView.as_view()),
+    path('file-signed-url/', FileDownloadUrlView.as_view())
 ]
