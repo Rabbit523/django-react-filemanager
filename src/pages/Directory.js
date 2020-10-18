@@ -19,7 +19,6 @@ import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
 import Modal from "react-modal";
 import Popup from "reactjs-popup";
-import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
@@ -28,11 +27,7 @@ import { toast } from "react-toastify";
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFilesByDirectory,
-  uploadFiles,
-  uploadFolder,
   getAllFolders,
-  getFiles,
-  uploadFile,
   createFolder,
   getFolders,
   getSignedPostUrl,
@@ -105,8 +100,6 @@ export const Directory = (props) => {
 
   const [is_download_failed, setDownloadFailed] = useState(false);
   const [is_upload_failed, setUploadFailed] = useState(false);
-
-  const [operation_error, setOperationError] = useState('');
 
   const [uploading_files, setUploadingFiles] = useState([]);
   const [uploading_folders, setUploadingFolders] = useState([]);
@@ -529,7 +522,7 @@ export const Directory = (props) => {
 
   const uploadMinorFile = async (file_data, totalFileSize) => {
 
-    var formData = new FormData;
+    var formData = new FormData();
     formData.append('file', file_data.file);
     formData.append('clientMethod', 'put_object');
     formData.append('filetype', file_data.file.type);

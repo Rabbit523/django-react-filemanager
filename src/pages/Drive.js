@@ -13,14 +13,12 @@ import {
   Button,
   Label,
   TransitionablePortal,
-  Form,
 } from "semantic-ui-react";
 import { isMobileOnly, isIOS } from "react-device-detect";
 import ReactHoverObserver from "react-hover-observer";
 import ReactLoading from "react-loading";
 import Modal from "react-modal";
 import Popup from "reactjs-popup";
-import Downloader from "js-file-downloader";
 import moment from "moment";
 import { animated } from "react-spring";
 import { useGesture } from "react-use-gesture";
@@ -29,7 +27,6 @@ import { toast } from "react-toastify";
 import { useEventListener } from "../helpers/CustomHook";
 import {
   getFiles,
-  uploadFile,
   createFolder,
   getFolders,
   getSignedPostUrl,
@@ -56,8 +53,6 @@ import {
   UploadViews,
 } from "../containers/Views";
 import Layout from "../containers/Layout";
-import Axios from "axios";
-import { any, array } from "prop-types";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
 
@@ -69,7 +64,7 @@ const CustomToast = ({ closeToast, text, type }) => {
   return (
     <div className="custom-toast-body">
       <label>{text}</label>
-      {type !== "download" || type !== "error" && <a onClick={onHandleCloseToast}>Locate</a>}
+      {(type !== "download" || type !== "error") && <a onClick={onHandleCloseToast}>Locate</a>}
     </div>
   );
 };
@@ -104,8 +99,6 @@ export const Drive = (props) => {
 
   const [is_download_failed, setDownloadFailed] = useState(false);
   const [is_upload_failed, setUploadFailed] = useState(false);
-
-  const [operation_error, setOperationError] = useState('');
 
   const [uploading_files, setUploadingFiles] = useState([]);
   const [uploading_folders, setUploadingFolders] = useState([]);
@@ -501,7 +494,7 @@ export const Drive = (props) => {
 
   const uploadMinorFile = async (file_data, totalFileSize) => {
 
-    var formData = new FormData;
+    var formData = new FormData();
     formData.append('file', file_data.file);
     formData.append('clientMethod', 'put_object');
     formData.append('filetype', file_data.file.type);
@@ -682,7 +675,7 @@ export const Drive = (props) => {
     });
   };
   const handleChangeFolder = async (e) => {
-    var formData = new FormData();
+    // var formData = new FormData();
     var directory = "";
     var file_arr = [];
 
