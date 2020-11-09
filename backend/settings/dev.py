@@ -10,9 +10,9 @@ WSGI_APPLICATION = 'backend.wsgi.dev.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'filemanager',
-        'USER': 'fm_user',
-        'PASSWORD': 'P40jg9zzL1YaquMayuzt',
+        'NAME': 'Filemanager',
+        'USER': 'postgres',
+        'PASSWORD': 'superstar1123',
         'HOST': '127.0.0.1',
         'PORT': '5432',
     }
